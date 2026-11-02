@@ -15,18 +15,59 @@ declaratively built widgets as memoized accessors assembled in `.tap` blocks.
 
 ## State of `lib/` on `ruby`
 
+All 31 target files now exist. Verified in the fork's dev shell (GTK 4.22.4,
+Ruby 3.4.9) by requiring every `lib/*.rb` under `xvfb-run` and resolving each
+class constant — all 31 load and resolve:
+
 ```
-lib/baobab.rb              requires baobab/application
-lib/baobab/application.rb  the scaffold stub: one Adw.ApplicationWindow,
-                           one Adw.ToolbarView, one Adw.HeaderBar, one
-                           Adw.StatusPage reading "The Ruby port has not
-                           been written yet."
-lib/baobab/rb/version.rb   gem version
+Application Window Scanner Chart RingsChart TreemapChart ProgressCell
+LocationList LocationRow Location Pathbar PathButton FolderDisplay FileCell
+FolderCell NameCell SizeCell ContentsCell TimeModifiedCell PreferencesDialog
+ExcludedRow ShortcutsDialog AboutDialog PrimaryMenu TreeviewMenu ChartMenu
+TreeListRowSorter Settings Style Translations Formatters
 ```
 
-**No user-facing component of baobab exists yet.** Every row below is a gap.
-The stub's four widgets correspond to nothing upstream and are placeholders to
-be replaced, not parity.
+6,300 lines across `lib/`, flat, one file per upstream component, each opening
+with `# frozen_string_literal: true`, `require 'adwaita'` and `require_relative`
+siblings, each class commented with the upstream file it came from — the pilot
+port's shape.
+
+Scan comparison (`component-scan.sh`, upstream `src/` + `data/` vs. `lib/`):
+
+| Stream | Upstream | Port |
+|---|---:|---:|
+| widget | 102 | 67 |
+| type | 73 | 47 |
+| controller | 9 | 7 |
+| signal | 46 | 46 |
+| css | 19 | 19 |
+| action | 21 | 3 |
+
+The widget/type/action deltas are scan artefacts, not gaps, and each was read
+back to source:
+
+- Upstream counts the same type once per `.ui` file *and* once per `.vala`
+  file; the port states each type once. Set-differencing the widget streams
+  leaves only `Gtk.Allocation` and `Gtk.LEVEL` upstream-only — a record and a
+  constant prefix, neither a widget.
+- The `action` stream is the scan's least reliable (the skill says so): the
+  port builds its 14 window actions from `ACTIONS = %w[...]` and its 6 chart
+  actions from a list, so the names are variables and never literals. Read off
+  the `add_action` sites, all 21 upstream actions across `app.`, `win.` and
+  `chart.` are installed.
+- The four upstream-only CSS classes (`baobab-cell-error`,
+  `baobab-cell-warning`, `in-progress`, `subfolder-tip`) are all present — as
+  `NameCell::ERROR_CLASS` / `WARNING_CLASS` constants and inside `style.rb`'s
+  heredoc, which the regex does not read as an `add_css_class` call.
+- The upstream-only signal names (`completed`, `progress`, `item-activated`,
+  `location-activated`, `removed`, `activated`) are Vala `signal` declarations
+  on non-widget classes. The port reimplements each as a callback list with an
+  `on_<name>` registrar (`LocationList#on_location_activated`,
+  `Pathbar#on_item_activated`, `Chart#on_item_activated`, and so on), which is
+  the house equivalent and is wired up in `window.rb`.
+
+So every row below is now **present**. What remains are the deviations and the
+untested surface, both recorded under Blockers.
 
 Totals: 21 upstream `.vala` files and 17 `.ui`/menu files carry user-facing
 components, mapping to 31 `lib/*.rb` files. Upstream installs 6 app/window
@@ -38,8 +79,7 @@ CSS classes in `data/style.css`, and 116 locales in `po/`.
 
 ## 1. `src/main.vala` + `src/baobab-application.vala` → `lib/application.rb`
 
-The application object. Kind: **application**. Present: **no** (the stub at
-`lib/baobab/application.rb` is unrelated placeholder content).
+The application object. Kind: **application**. Present: **yes** (`lib/application.rb`).
 
 | Facet | Upstream |
 |---|---|
@@ -54,7 +94,7 @@ Repeaters: none. Conditional: `ScanFlags` depends on the `-a` flag.
 ## 2. `src/baobab-window.vala` + `data/ui/baobab-main-window.ui` → `lib/window.rb`
 
 The main window: an `Adw.NavigationView` of two pages — the devices list and
-the results view. Kind: **window**. Present: **no**.
+the results view. Kind: **window**. Present: **yes**.
 
 | Widget | × | CSS | Signals / handler | Notes |
 |---|---:|---|---|---|
@@ -105,14 +145,14 @@ progress timeout driving `location.progress ()`.
 
 ## 3. `data/ui/baobab-main-window.ui` (`menu primarymenu`) → `lib/primary_menu.rb`
 
-Kind: **menu**. Present: **no**. Two sections, 6 items: "Scan Folder…"
+Kind: **menu**. Present: **yes**. Two sections, 6 items: "Scan Folder…"
 (`win.scan-folder`), "Clear Recent List" (`win.clear-recent`) | "Preferences"
 (`win.show-preferences`), "Keyboard _Shortcuts" (`app.shortcuts`), "_Help"
 (`win.help`), "_About Disk Usage Analyzer" (`win.about`).
 
 ## 4. `data/ui/shortcuts-dialog.ui` → `lib/shortcuts_dialog.rb`
 
-Kind: **dialog** (keyboard shortcuts). Present: **no**. Standalone `.ui` with
+Kind: **dialog** (keyboard shortcuts). Present: **yes**. Standalone `.ui` with
 no backing source file — `Adw.Application` loads it for `app.shortcuts`.
 `Adw.ShortcutsDialog` with 2 `Adw.ShortcutsSection`s and 7
 `Adw.ShortcutsItem`s: General — Show Help, Open Main Menu, Quit, Show Keyboard
@@ -120,14 +160,14 @@ Shortcuts, Show Preferences; Scanning — Scan Folder, Rescan Current Location.
 
 ## 5. `src/baobab-window.vala` (`on_about_activate`) → `lib/about_dialog.rb`
 
-Kind: **dialog** (about). Present: **no**. `Adw.AboutDialog`: application name
+Kind: **dialog** (about). Present: **yes**. `Adw.AboutDialog`: application name
 "Disk Usage Analyzer", icon `org.gnome.baobab`, developer name "The GNOME
 Project", website `https://apps.gnome.org/Baobab/`, issue URL, GPL-2.0, the
 6-entry developers list and the two copyright lines, `translator-credits`.
 
 ## 6. `src/baobab-location-list.vala` (`LocationList`) + `data/ui/baobab-location-list.ui` → `lib/location_list.rb`
 
-The home page: devices and locations. Kind: **page**. Present: **no**.
+The home page: devices and locations. Kind: **page**. Present: **yes**.
 
 | Widget | × | CSS | Signals | Notes |
 |---|---:|---|---|---|
@@ -145,7 +185,7 @@ filesystem usage. Signal: `location_activated (Location)`.
 
 ## 7. `src/baobab-location-list.vala` (`LocationRow`) + `data/ui/baobab-location-row.ui` → `lib/location_row.rb`
 
-One device or location row. Kind: **row**. Present: **no**.
+One device or location row. Kind: **row**. Present: **yes**.
 
 | Widget | × | CSS | Signals | Notes |
 |---|---:|---|---|---|
@@ -165,7 +205,7 @@ Conditional: the whole usage block only when `volume`, `mount` or
 
 ## 8. `src/baobab-location.vala` → `lib/location.rb`
 
-Kind: **model**. Present: **no**. `Location` with six constructors
+Kind: **model**. Present: **yes**. `Location` with six constructors
 (`for_home_folder`, `from_volume`, `from_mount`, `for_main_volume`,
 `for_recent_info`, `for_file`), the `changed` and `progress` signals,
 `update_volume_info`, `queue_query_fs_usage`, async `mount_volume`, and the
@@ -173,7 +213,7 @@ Kind: **model**. Present: **no**. `Location` with six constructors
 
 ## 9. `src/baobab-pathbar.vala` (`Pathbar`) + `data/ui/baobab-pathbar.ui` → `lib/pathbar.rb`
 
-The breadcrumb in the results header bar. Kind: **widget**. Present: **no**.
+The breadcrumb in the results header bar. Kind: **widget**. Present: **yes**.
 
 | Widget | × | CSS | Signals | Notes |
 |---|---:|---|---|---|
@@ -191,7 +231,7 @@ and `undershoot.right`.
 
 ## 10. `src/baobab-pathbar.vala` (`PathButton`) + `data/ui/baobab-pathbutton.ui` → `lib/path_button.rb`
 
-Kind: **widget** (button). Present: **no**. `Gtk.Button` root containing a
+Kind: **widget** (button). Present: **yes**. `Gtk.Button` root containing a
 `Gtk.Box` (spacing 6), a `Gtk.Image` `icon` (hidden unless a gicon is given)
 and a `Gtk.Label` `label`. CSS: `dim-label` on both icon and label when not the
 current directory, `current-dir` on the button when it is. Min 7 chars (28 for
@@ -201,7 +241,7 @@ full name.
 ## 11. `src/baobab-folder-display.vala` + `data/ui/baobab-folder-display.ui` → `lib/folder_display.rb`
 
 The one-row summary header above the tree, carrying the column titles and
-sorters. Kind: **widget**. Present: **no**.
+sorters. Kind: **widget**. Present: **yes**.
 
 | Widget | × | CSS | Signals | Notes |
 |---|---:|---|---|---|
@@ -219,20 +259,20 @@ scrolledwindow.frame`.
 
 ## 12. `src/baobab-file-cell.vala` + `data/ui/baobab-file-cell.ui` → `lib/file_cell.rb`
 
-Kind: **cell**. Present: **no**. `Adw.Bin` holding a `Gtk.TreeExpander`
+Kind: **cell**. Present: **yes**. `Adw.Bin` holding a `Gtk.TreeExpander`
 (`list-row` bound, `hide-expander` bound to `is-empty`) over a `Gtk.Box`
 (`baobab-cell-box`) of a `ProgressCell` (fraction bound) and a `NameCell`.
 Properties `item`, `list_row`.
 
 ## 13. `src/baobab-folder-cell.vala` + `data/ui/baobab-folder-cell.ui` → `lib/folder_cell.rb`
 
-Kind: **cell**. Present: **no**. `Adw.Bin` holding a `Gtk.Box`
+Kind: **cell**. Present: **yes**. `Adw.Bin` holding a `Gtk.Box`
 (`baobab-cell-box`) of a `Gtk.Image` `pan-up-symbolic` (visible via the
 `has_parent_cb` closure) and a `NameCell`.
 
 ## 14. `src/baobab-name-cell.vala` + `data/ui/baobab-name-cell.ui` → `lib/name_cell.rb`
 
-Kind: **cell**. Present: **no**. `Adw.Bin` over a `Gtk.Label` (ellipsize end,
+Kind: **cell**. Present: **yes**. `Adw.Bin` over a `Gtk.Label` (ellipsize end,
 halign start, single-line, xalign 0) bound to `display_name`. CSS applied
 dynamically on `notify::item`: `baobab-cell-error` when the scan state is
 `ERROR`, `baobab-cell-warning` when `CHILD_ERROR`, neither otherwise —
@@ -240,23 +280,23 @@ dynamically on `notify::item`: `baobab-cell-error` when the scan state is
 
 ## 15. `src/baobab-size-cell.vala` + `data/ui/baobab-size-cell.ui` → `lib/size_cell.rb`
 
-Kind: **cell**. Present: **no**. `Adw.Bin` over a `Gtk.Label` (`numeric`,
+Kind: **cell**. Present: **yes**. `Adw.Bin` over a `Gtk.Label` (`numeric`,
 halign end, xalign 1) formatted by `format_size_cb` — empty string when the
 item is null or errored.
 
 ## 16. `src/baobab-contents-cell.vala` + `data/ui/baobab-contents-cell.ui` → `lib/contents_cell.rb`
 
-Kind: **cell**. Present: **no**. Same shape; `format_items_cb` over `elements`,
+Kind: **cell**. Present: **yes**. Same shape; `format_items_cb` over `elements`,
 empty when null, negative or errored.
 
 ## 17. `src/baobab-time-modified-cell.vala` + `data/ui/baobab-time-modified-cell.ui` → `lib/time_modified_cell.rb`
 
-Kind: **cell**. Present: **no**. `Adw.Bin` over a `Gtk.Label` (halign end,
+Kind: **cell**. Present: **yes**. `Adw.Bin` over a `Gtk.Label` (halign end,
 xalign 1, no `numeric` class) formatted by `format_time_approximate_cb`.
 
 ## 18. `src/baobab-progress-cell.vala` → `lib/progress_cell.rb`
 
-The in-cell usage bar. Kind: **custom widget**. Present: **no**. A
+The in-cell usage bar. Kind: **custom widget**. Present: **yes**. A
 `Gtk.Widget` subclass with CSS name `progresscell` and accessible role
 `PROGRESS_BAR`, built from an `Adw.Bin` `trough`, an `Adw.Bin` `progress`, a
 `Gtk.Label` and a second `Gtk.Label` with `in-progress` (clipped to the filled
@@ -267,13 +307,13 @@ Stylesheet: `progresscell`, `progresscell progress`, `progresscell trough`,
 
 ## 19. `src/baobab-cellrenderers.vala` → `lib/formatters.rb`
 
-Kind: **helpers** (translated strings). Present: **no**. `format_items`
+Kind: **helpers** (translated strings). Present: **yes**. `format_items`
 (ngettext "%d item"/"%d items") and `format_time_approximate` ("Unknown",
 "Today", "%lu day(s)", "%lu month(s)", "%lu year(s)").
 
 ## 20. `src/baobab-preferences-dialog.vala` (`PreferencesDialog`) + `data/ui/baobab-preferences-dialog.ui` → `lib/preferences_dialog.rb`
 
-Kind: **dialog** (preferences). Present: **no**.
+Kind: **dialog** (preferences). Present: **yes**.
 
 | Widget | × | CSS | Signals | Notes |
 |---|---:|---|---|---|
@@ -289,20 +329,20 @@ Reads and writes `excluded-uris` on `org.gnome.baobab.preferences`.
 
 ## 21. `src/baobab-preferences-dialog.vala` (`ExcludedRow`) + `data/ui/baobab-excluded-row.ui` → `lib/excluded_row.rb`
 
-Kind: **row**. Present: **no**. `Adw.ActionRow` (not activatable) with title =
+Kind: **row**. Present: **yes**. `Adw.ActionRow` (not activatable) with title =
 path for `file://` URIs, otherwise the URI, and a suffix `Gtk.Button`
 `remove_button` (`flat`, `edit-delete-symbolic`, valign center, tooltip "Remove
 Folder") whose `clicked` emits `removed`.
 
 ## 22. `data/ui/baobab-treeview-menu.ui` → `lib/treeview_menu.rb`
 
-Kind: **menu** (context menu on the tree). Present: **no**. One section, 3
+Kind: **menu** (context menu on the tree). Present: **yes**. One section, 3
 items: "_Open Externally" (`win.treeview-open-folder`), "_Copy Path to
 Clipboard" (`win.treeview-copy`), "Mo_ve to Trash" (`win.treeview-trash`).
 
 ## 23. `data/gtk/menus.ui` (`menu chartmenu`) → `lib/chart_menu.rb`
 
-Kind: **menu** (context menu on the charts). Present: **no**. Three sections,
+Kind: **menu** (context menu on the charts). Present: **yes**. Three sections,
 6 items: "_Open Externally" (`chart.open-file`), "_Copy Path to Clipboard"
 (`chart.copy-path`), "Mo_ve to Trash" (`chart.trash-file`) | "Go to _Parent
 Folder" (`chart.move-up`) | "Zoom _In" (`chart.zoom-in`), "Zoom _Out"
@@ -310,7 +350,7 @@ Folder" (`chart.move-up`) | "Zoom _In" (`chart.zoom-in`), "Zoom _Out"
 
 ## 24. `src/baobab-chart.vala` → `lib/chart.rb`
 
-The abstract chart base. Kind: **widget** (abstract). Present: **no**.
+The abstract chart base. Kind: **widget** (abstract). Present: **yes**.
 
 | Facet | Upstream |
 |---|---|
@@ -323,7 +363,7 @@ The abstract chart base. Kind: **widget** (abstract). Present: **no**.
 
 ## 25. `src/baobab-ringschart.vala` → `lib/rings_chart.rb`
 
-Kind: **widget**. Present: **no**. `Chart` subclass, CSS name `ringschart`,
+Kind: **widget**. Present: **yes**. `Chart` subclass, CSS name `ringschart`,
 `RingschartItem` (radii, angles, `continued`), subfolder tips drawn with the
 `subfolder-tip` style class (stylesheet: `ringschart.subfolder-tip`), keyboard
 zoom via `can_zoom_in`/`can_zoom_out`, redraws on `notify::max-depth`,
@@ -331,13 +371,13 @@ zoom via `can_zoom_in`/`can_zoom_out`, redraws on `notify::max-depth`,
 
 ## 26. `src/baobab-treemap.vala` → `lib/treemap_chart.rb`
 
-Kind: **widget**. Present: **no**. `Chart` subclass, CSS name `treemap`,
+Kind: **widget**. Present: **yes**. `Chart` subclass, CSS name `treemap`,
 `TreemapItem` with a Cairo rectangle, squarified layout, own hit test and zoom
 predicates.
 
 ## 27. `src/baobab-scanner.vala` → `lib/scanner.rb`
 
-Kind: **model**. Present: **no**. `ScanFlags`, `Scanner` (async directory walk,
+Kind: **model**. Present: **yes**. `ScanFlags`, `Scanner` (async directory walk,
 `total_size`, `total_elements`, `max_depth`, `show_allocated_size`,
 `completed` signal, `scan`/`cancel`/`finish`, hard-link de-duplication) and
 `Scanner.Results` (`display_name`, `size`, `time_modified`, `elements`,
@@ -346,13 +386,13 @@ Kind: **model**. Present: **no**. `ScanFlags`, `Scanner` (async directory walk,
 
 ## 28. `src/baobab-tree-list-row-sorter.vala` → `lib/tree_list_row_sorter.rb`
 
-Kind: **sorter**. Present: **no**. `Gtk.Sorter` subclass that unwraps
+Kind: **sorter**. Present: **yes**. `Gtk.Sorter` subclass that unwraps
 `Gtk.TreeListRow`s and keeps parents above children, with `sorter` and
 `sort_order` properties and an overridden `compare` / `get_order`.
 
 ## 29. `data/org.gnome.baobab.gschema.xml` → `lib/settings.rb`
 
-Kind: **settings**. Present: **no**. Three schemas:
+Kind: **settings**. Present: **yes**. Three schemas:
 `org.gnome.baobab` (children `preferences`, `ui`);
 `org.gnome.baobab.preferences` — `excluded-uris` (`as`, default `[]`);
 `org.gnome.baobab.ui` — `active-chart` (`s`, choices `rings`/`treemap`,
@@ -362,7 +402,7 @@ settings object and binds `is-maximized`.
 
 ## 30. `data/style.css` (+ `data/baobab.gresource.xml`) → `lib/style.rb`
 
-Kind: **stylesheet**. Present: **no**. 25 selectors; the classes the port must
+Kind: **stylesheet**. Present: **yes**. 25 selectors; the classes the port must
 apply are `baobab-cell-error`, `baobab-cell-warning`, `baobab-cell-box`,
 `pathbar`, `current-dir`, `symbolic-circular`, `subfolder-tip`, `contents`,
 `in-progress`, `numeric`, `boxed-list`, `dim-label`, `subtitle`,
@@ -373,7 +413,7 @@ chart switcher pages need.
 
 ## 31. `po/` (116 locales, `po/POTFILES.in`) → `lib/translations.rb`
 
-Kind: **translations**. Present: **no**. 17 files in `POTFILES.in`. Every
+Kind: **translations**. Present: **yes**. 17 files in `POTFILES.in`. Every
 translatable string named above comes from this catalogue; it has its own
 parity step (`translation-parity`) and is listed here only so no user-facing
 string is unaccounted for.
@@ -388,53 +428,55 @@ string is unaccounted for.
 
 ## Blockers
 
-Probed in the fork's dev shell (`nix develop`, GTK 4.22.4, libadwaita 1.9.3,
-Ruby 3.4.9). Everything the port needs exists as a constant — `Adwaita::`
-`ButtonRow`, `ShortcutsDialog`, `ShortcutsSection`, `ShortcutsItem`, `Spinner`,
-`Banner`, `ToastOverlay`, `NavigationView`, `OverlaySplitView`,
-`BreakpointBin`, `ViewSwitcher`, `PreferencesDialog`, `AboutDialog`,
-`TimedAnimation`, `PropertyAnimationTarget`; `Gtk::` `ColumnView`,
-`ColumnViewCell`, `ColumnViewColumn`, `TreeExpander`, `TreeListModel`,
-`TreeListRow`, `SignalListItemFactory`, `StringSorter`, `NumericSorter`,
-`CustomSorter`, `PropertyExpression`, `PopoverMenu`, `DropTarget`,
-`ShortcutController`, `LevelBar`, `FileChooserNative`, `FileDialog`,
-`DrawingArea#set_draw_func`; `Gio::` `Settings`, `SimpleActionGroup`, `Menu`,
-`ListStore`, `VolumeMonitor`; `Gtk::RecentManager`. What remains:
+The eight blockers the first pass of this survey recorded have all been
+resolved or consciously deviated from in the port. Re-probed in the fork's dev
+shell (GTK 4.22.4, libadwaita 1.9.3, Ruby 3.4.9):
 
-1. **`ProgressCell` cannot be ported as written.** `Gtk::Widget` in these
-   bindings exposes `measure` and `size_allocate` but **not `snapshot`**
-   (`Gtk::Widget.method_defined?(:snapshot) == false`), and upstream's cell
-   relies on overriding `snapshot` to clip the `in-progress` label to the
-   filled fraction. It needs a different construction — a `Gtk::DrawingArea`
-   with a draw func, or a `Gtk::Overlay` over a trough/progress pair — and a
-   decision on how faithfully to keep the CSS names `progresscell`,
-   `trough`, `progress`.
-2. **No GResource, no `.ui`, no GtkBuilder bindings/closures.** Nine upstream
-   `.ui` files carry their behaviour as `<binding>`/`<closure>` expressions
-   (every cell's label, `has_parent_cb`, `format_size_cb`, the sorters' sort
-   order). The port rebuilds these as explicit `notify::` handlers or
-   `Gtk::PropertyExpression`s; the cells are where that is most work.
-3. **Two `GtkColumnView` internal-structure hacks.** Hiding the tree's header
-   row and adding the header title cells to the size groups both walk children
-   looking for the private types `GtkColumnViewRowWidget` and
-   `GtkColumnViewTitle`. `GLib::Type.from_name` is reachable from Ruby, so
-   this is portable in principle, but it is unverified and the alignment
-   between the summary row and the tree depends on it.
-4. **GSettings needs a compiled schema.** `Gio::Settings.new` aborts when the
-   schema is not installed. The port has to ship and compile its own
-   `gschema.xml` (under its own id) and put it on `GSETTINGS_SCHEMA_DIR` in
-   the dev shell, or wrap settings behind an in-memory fallback.
-5. **`Gtk::FileChooserNative` is deprecated in GTK 4.10+.** Both file pickers
-   (scan a folder, exclude a location) should use `Gtk::FileDialog`, which
-   changes the "Recursively analyze mount points" extra choice — `FileDialog`
-   has no `add_choice`, so that option needs rehousing (a check button in the
-   primary menu or a preference).
-6. **The charts are ~1,200 lines of Cairo geometry.** `chart.vala` +
-   `ringschart.vala` + `treemap.vala` carry the hit testing, the subfolder
-   tips, the zoom and the tooltips. They are portable via `set_draw_func` but
-   are the single largest unit in the port and should be planned as their own
-   phase.
-7. **Help is not portable.** `win.help` opens `help:baobab` from 8 Mallard
-   pages the port does not ship; needs a decision (external URL vs. omitting).
-8. **116 locales.** Parity on translations is a separate step; the inventory
-   records which strings are translatable so nothing is missed.
+**Resolved**
+
+1. **`ProgressCell`.** `Gtk::Widget#snapshot` is still absent from these
+   bindings, so `lib/progress_cell.rb` (225 lines) does not subclass
+   `Gtk::Widget`. It keeps the CSS names `progresscell`, `trough`, `progress`
+   and the `in-progress` label class, which is what the stylesheet selects on.
+2. **No GResource / `.ui` / GtkBuilder closures.** Every `<binding>` and
+   `<closure>` is rebuilt as an explicit `notify::` handler or a formatter call
+   in the cell files; all five cells plus `folder_display.rb` are in place.
+3. **`GtkColumnView` internal-structure hacks.** Handled inside `window.rb`
+   and `folder_display.rb` rather than by walking private types.
+4. **GSettings schema.** Deviation: `lib/settings.rb` is a JSON-backed store
+   keyed on upstream's three schemas' keys (`excluded-uris`, `active-chart`,
+   `window-size`, `is-maximized`) instead of `Gio::Settings`, so the port needs
+   no compiled schema on `GSETTINGS_SCHEMA_DIR`. Behaviourally equivalent for
+   the app; not interoperable with an installed upstream baobab's settings.
+5. **Charts.** Ported: `chart.rb` 588, `rings_chart.rb` 581,
+   `treemap_chart.rb` 294 lines, with the chart action group, the three click
+   gestures, the scroll zoom, the tooltips and the six hard-coded colours.
+6. **`Gtk::ShortcutController`.** Deviation: the four tree shortcuts (`Menu`,
+   `Right`, `Left`, `<Alt>Up`) are a `Gtk::EventControllerKey` `key-pressed`
+   case statement in `window.rb` (around line 1081, commented as such) rather
+   than a shortcut controller. Same bindings, same actions.
+
+**Open**
+
+7. **`Gtk::FileChooserNative` is still what both pickers use**
+   (`lib/window.rb`, `lib/preferences_dialog.rb`). Deprecated since GTK 4.10.
+   It works, and it is the only way to keep upstream's "Recursively analyze
+   mount points" extra choice, which `Gtk::FileDialog` cannot express — so the
+   deprecation is the price of that one parity point. Worth a decision, not a
+   blocker.
+8. **Help is not portable.** `win.help` is installed and dispatches to
+   `show_help`; upstream's 8 Mallard pages are not shipped, so this points at
+   the upstream help URL rather than `help:baobab`.
+9. **No drive script and no specs.** The dev shell's banner advertises
+   `xvfb-run ruby test/drive_*.rb`, but `test/` does not exist, and `spec/`
+   holds only `README.md` and `spec_helper.rb`. Nothing currently proves the
+   window actually presents, that a scan completes, or that either chart
+   draws — the strongest remaining gap, and the one the `ruby-gtk-testing` and
+   `test-parity` steps answer.
+10. **116 locales.** `lib/translations.rb` resolves strings against upstream's
+    catalogues; coverage across the 116 `po/` files is the `translation-parity`
+    step's business, not verified here.
+11. **`Window < Adwaita::ApplicationWindow`.** The `ruby-gtk` skill records
+    `Adwaita::ApplicationWindow` as broken in these bindings and prescribes
+    `Gtk::ApplicationWindow`. The class loads here, but whether it presents
+    correctly is exactly what blocker 9 means nobody has checked.
