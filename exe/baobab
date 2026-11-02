@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "baobab"
+require 'baobab'
 
-Baobab::Application.new.build.run
+Application.new.build.run
