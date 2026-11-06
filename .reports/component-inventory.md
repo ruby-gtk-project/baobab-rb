@@ -467,16 +467,37 @@ shell (GTK 4.22.4, libadwaita 1.9.3, Ruby 3.4.9):
 8. **Help is not portable.** `win.help` is installed and dispatches to
    `show_help`; upstream's 8 Mallard pages are not shipped, so this points at
    the upstream help URL rather than `help:baobab`.
-9. **No drive script and no specs.** The dev shell's banner advertises
-   `xvfb-run ruby test/drive_*.rb`, but `test/` does not exist, and `spec/`
-   holds only `README.md` and `spec_helper.rb`. Nothing currently proves the
-   window actually presents, that a scan completes, or that either chart
-   draws — the strongest remaining gap, and the one the `ruby-gtk-testing` and
-   `test-parity` steps answer.
+9. **Resolved.** `test/gtk_driver.rb` (copied from the `ruby-gtk-testing`
+   skill) and `test/drive_main_window.rb` now exist. The drive scans a real
+   three-file sample tree and asserts: the home page lists the device/recent
+   rows, the scan lands on the results page with a populated column view, the
+   rings chart gets a root and renders, switching to the treemap chart gets
+   its own root and renders, preferences/about/shortcuts each open a dialog,
+   and a rescan returns to results. `nix develop --command xvfb-run -a ruby
+   test/drive_main_window.rb` passes 12/12 checks (`DRIVE OK`), run
+   repeatedly. Driving it surfaced one real bug, now fixed: the gio2 bindings
+   hand a string-typed action's `activate` signal a plain Ruby `String`, not
+   the `GLib::Variant` upstream's Vala receives, so
+   `Window#install_actions`'s `active-chart` handler crashed on
+   `parameter.get_string` every time the chart switcher was used — fixed with
+   a `chart_name` helper that only calls `get_string` when the parameter
+   actually responds to it. `spec/formatters_spec.rb` and
+   `spec/settings_spec.rb` cover the two non-widget components with no GTK
+   dependency beyond `require 'adwaita'`'s GTK init (22 examples). The
+   project's own `spec_helper.rb` requires the `kettle-test` gem, which is not
+   installed in this offline environment, so the documented
+   `ruby -e 'require "rspec/core"; ...'` spec command cannot run here; the 22
+   examples were verified directly against `rspec/core` with that one
+   `require` bypassed, under `xvfb-run` (`require 'adwaita'` needs a display
+   to init GTK even for string-only code, by the house convention that every
+   file requires it). The remaining gap is screenshot-only: a dialog's render
+   node is occasionally not yet realised on the tick its screenshot is taken,
+   which `GtkDriver#shot` already treats as non-fatal and reports separately
+   from the pass/fail checks.
 10. **116 locales.** `lib/translations.rb` resolves strings against upstream's
     catalogues; coverage across the 116 `po/` files is the `translation-parity`
     step's business, not verified here.
-11. **`Window < Adwaita::ApplicationWindow`.** The `ruby-gtk` skill records
-    `Adwaita::ApplicationWindow` as broken in these bindings and prescribes
-    `Gtk::ApplicationWindow`. The class loads here, but whether it presents
-    correctly is exactly what blocker 9 means nobody has checked.
+11. **Resolved.** `Window < Adwaita::ApplicationWindow` presents correctly:
+    the drive script above opens it, scans into it, switches its two charts
+    and opens three dialogs from it, all confirmed by assertions and
+    screenshots (`tmp/shots/`).

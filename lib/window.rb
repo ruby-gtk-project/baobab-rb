@@ -487,7 +487,14 @@ class Window < Adwaita::ApplicationWindow
       menu_button.signal_connect('notify::active') { sync_primary_menu_state }
 
       add_action(active_chart_action)
-      active_chart_action.signal_connect('activate') { |_, parameter| self.active_chart = parameter.get_string }
+      active_chart_action.signal_connect('activate') { |_, parameter| self.active_chart = chart_name(parameter) }
+    end
+
+    # The gio2 bindings hand the 'activate' signal a plain Ruby String for a
+    # string-typed action parameter rather than the GLib::Variant upstream's
+    # Vala receives, so get_string is only there to call when one is given.
+    def chart_name(parameter)
+      parameter.respond_to?(:get_string) ? parameter.get_string : parameter
     end
 
     def activate_window_action(name)
