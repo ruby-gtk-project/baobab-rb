@@ -1,0 +1,467 @@
+# Miloš Popović <gpopac@gmail.com>, 2011.
+# Miroslav Nikolić <miroslavnikolic@rocketmail.com>, 2011—2017.
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-utils-2.0\n"
+"Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/baobab/issues/\n"
+"POT-Creation-Date: 2025-10-16 16:07+0000\n"
+"PO-Revision-Date: 2024-11-08 06:57+0100\n"
+"Last-Translator: Marko M. Kostić <marko.m.kostic@gmail.com>\n"
+"Language-Team: Serbian <(nothing)>\n"
+"Language: sr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=n==1? 3 : n%10==1 && n%100!=11 ? 0 : "
+"n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Project-Style: gnome\n"
+"X-Generator: Poedit 3.4.4\n"
+
+#: data/org.gnome.baobab.desktop.in:2 data/org.gnome.baobab.metainfo.xml.in:6
+#: data/ui/baobab-main-window.ui:35 src/baobab-window.vala:260
+msgid "Disk Usage Analyzer"
+msgstr "Ispitivač iskorišćenosti diska"
+
+#: data/org.gnome.baobab.desktop.in:3 data/org.gnome.baobab.metainfo.xml.in:7
+msgid "Check folder sizes and available disk space"
+msgstr "Proverite veličine fascikli i slobodan prostor na disku"
+
+#. Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
+#: data/org.gnome.baobab.desktop.in:5
+msgid "storage;space;cleanup;"
+msgstr "smeštaj;skladištenje;prostor;čišćenje;storage;space;cleanup;"
+
+#: data/org.gnome.baobab.metainfo.xml.in:9
+msgid ""
+"A simple application to keep your disk usage and available space under "
+"control."
+msgstr ""
+"Jednostavan program za držanje iskorišćenosti diska i dostupnog prostora pod "
+"kontrolom."
+
+#: data/org.gnome.baobab.metainfo.xml.in:12
+msgid ""
+"Disk Usage Analyzer can scan specific folders, storage devices and online "
+"accounts. It provides both a tree and a graphical representation showing the "
+"size of each folder, making it easy to identify where disk space is wasted."
+msgstr ""
+"Ispitivač iskorišćenosti diska može da ispita određene fascikle, skladišne "
+"uređaje i naloge na mreži. Obezbeđuje predstavljanje i u vidu stabla i u vidu "
+"grafika pokazujući veličinu svake fascikle, olakšavajući otkrivanje "
+"izgubljenog prostora na disku."
+
+#: data/org.gnome.baobab.metainfo.xml.in:20
+msgid "Devices and Locations View"
+msgstr "Pregled uređaja i mesta"
+
+#: data/org.gnome.baobab.metainfo.xml.in:24
+msgid "Scan View"
+msgstr "Pregled ispitivanja"
+
+#. developer_name tag deprecated with Appstream 1.0
+#: data/org.gnome.baobab.metainfo.xml.in:41 src/baobab-window.vala:262
+msgid "The GNOME Project"
+msgstr "Gnomov projekat"
+
+#: data/org.gnome.baobab.gschema.xml:9
+msgid "Excluded locations URIs"
+msgstr "Isključeni URI-ji mesta"
+
+#: data/org.gnome.baobab.gschema.xml:10
+msgid "A list of URIs for locations to be excluded from scanning."
+msgstr "Spisak URI-ja za mesta koja treba isključiti iz ispitivanja."
+
+#: data/org.gnome.baobab.gschema.xml:20
+msgid "Active Chart"
+msgstr "Aktivni grafikon"
+
+#: data/org.gnome.baobab.gschema.xml:21
+msgid "Which type of chart should be displayed."
+msgstr "Vrsta grafika koji će biti prikazan."
+
+#: data/org.gnome.baobab.gschema.xml:25
+msgid "Window size"
+msgstr "Veličina prozora"
+
+#: data/org.gnome.baobab.gschema.xml:26
+msgid "The initial size of the window"
+msgstr "Početna veličina prozora"
+
+#: data/org.gnome.baobab.gschema.xml:30
+msgid "Window Maximized"
+msgstr "Uvećan prozor"
+
+#: data/org.gnome.baobab.gschema.xml:31
+msgid "Whether or not the window is maximized"
+msgstr "Da li je prozor uvećan"
+
+#: data/gtk/help-overlay.ui:11
+msgctxt "shortcut window"
+msgid "General"
+msgstr "Opšte"
+
+#: data/gtk/help-overlay.ui:15
+msgctxt "shortcut window"
+msgid "Show help"
+msgstr "Prikazuje pomoć"
+
+#: data/gtk/help-overlay.ui:21
+msgctxt "shortcut window"
+msgid "Show / Hide primary menu"
+msgstr "Prikaži ili sakrij primarni izbornik"
+
+#: data/gtk/help-overlay.ui:27
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Izlaz"
+
+#: data/gtk/help-overlay.ui:33
+msgctxt "shortcut window"
+msgid "Show Keyboard Shortcuts"
+msgstr "Prikaži prečice na tastaturi"
+
+#: data/gtk/help-overlay.ui:39
+msgctxt "shortcut window"
+msgid "Show preferences"
+msgstr "Prikaži postavke"
+
+#: data/gtk/help-overlay.ui:46
+msgctxt "shortcut window"
+msgid "Scanning"
+msgstr "Ispitivanje"
+
+#: data/gtk/help-overlay.ui:50
+msgctxt "shortcut window"
+msgid "Scan folder"
+msgstr "Fascikla ispitivanja"
+
+#: data/gtk/help-overlay.ui:56
+msgctxt "shortcut window"
+msgid "Rescan current location"
+msgstr "Ponovo ispitaj trenutno mesto"
+
+#: data/gtk/menus.ui:7 data/ui/baobab-treeview-menu.ui:6
+msgid "_Open Externally"
+msgstr "_Otvori spolja"
+
+#: data/gtk/menus.ui:11 data/ui/baobab-treeview-menu.ui:10
+msgid "_Copy Path to Clipboard"
+msgstr "_Umnoži putanju u ostavu"
+
+#: data/gtk/menus.ui:15 data/ui/baobab-treeview-menu.ui:14
+msgid "Mo_ve to Trash"
+msgstr "Premesti u _smeće"
+
+#: data/gtk/menus.ui:21
+msgid "Go to _Parent Folder"
+msgstr "Idi u _roditeljsku fasciklu"
+
+#: data/gtk/menus.ui:27
+msgid "Zoom _In"
+msgstr "U_većaj"
+
+#: data/gtk/menus.ui:31
+msgid "Zoom _Out"
+msgstr "U_manji"
+
+#: data/ui/baobab-excluded-row.ui:7
+msgid "Remove Folder"
+msgstr "Ukloni fasciklu"
+
+#: data/ui/baobab-folder-display.ui:26 data/ui/baobab-main-window.ui:144
+msgid "Folder"
+msgstr "Fascikla"
+
+#: data/ui/baobab-folder-display.ui:56 data/ui/baobab-main-window.ui:158
+msgid "Size"
+msgstr "Veličina"
+
+#: data/ui/baobab-folder-display.ui:85 data/ui/baobab-main-window.ui:171
+msgid "Contents"
+msgstr "Sadržaji"
+
+#: data/ui/baobab-folder-display.ui:114 data/ui/baobab-main-window.ui:184
+msgid "Modified"
+msgstr "Izmenjen"
+
+#: data/ui/baobab-location-list.ui:6
+msgid "This Device"
+msgstr "Ovaj uređaj"
+
+#: data/ui/baobab-location-list.ui:19
+msgid "Remote Locations"
+msgstr "Na udaljenim mestima"
+
+#: data/ui/baobab-main-window.ui:7
+msgid "Scan Folder…"
+msgstr "Ispitaj fasciklu…"
+
+#: data/ui/baobab-main-window.ui:11
+msgid "Clear Recent List"
+msgstr "Očisti spisak nedavnog"
+
+#: data/ui/baobab-main-window.ui:17 data/ui/baobab-preferences-dialog.ui:5
+msgid "Preferences"
+msgstr "Postavke"
+
+#: data/ui/baobab-main-window.ui:21
+msgid "Keyboard _Shortcuts"
+msgstr "Pr_ečice na tastaturi"
+
+#: data/ui/baobab-main-window.ui:25
+msgid "_Help"
+msgstr "Po_moć"
+
+#: data/ui/baobab-main-window.ui:29
+msgid "_About Disk Usage Analyzer"
+msgstr "_O Ispitivaču iskorišćenosti diska"
+
+#: data/ui/baobab-main-window.ui:45 src/baobab-window.vala:571
+msgid "Devices & Locations"
+msgstr "Uređaji i mesta"
+
+#: data/ui/baobab-main-window.ui:55
+msgid "Main Menu"
+msgstr "Glavni meni"
+
+#: data/ui/baobab-main-window.ui:70
+msgid "Results"
+msgstr "Rezultati"
+
+#: data/ui/baobab-main-window.ui:90
+msgid "Rescan Current Location"
+msgstr "Ponovo ispitaj trenutno mesto"
+
+#: data/ui/baobab-main-window.ui:100
+msgid "Files may take more space than shown"
+msgstr "Datoteke mogu zauzimati više od prikazanog"
+
+#: data/ui/baobab-main-window.ui:259
+msgid "_Rings Chart"
+msgstr "P_rstenasti grafikon"
+
+#: data/ui/baobab-main-window.ui:273
+msgid "_Treemap Chart"
+msgstr "Grafikon s_tabla"
+
+#: data/ui/baobab-preferences-dialog.ui:11
+msgid "Locations to Ignore"
+msgstr "Mesta koja treba zanemariti"
+
+#: src/baobab-application.vala:33
+msgid ""
+"Do not skip directories on different file systems. Ignored if DIRECTORY is "
+"not specified."
+msgstr ""
+"Ne preskači direktorijume na različitim sistemima datoteka. Zanemaruje se "
+"ako DIRECTORY nije naveden."
+
+#: src/baobab-application.vala:34
+msgid "Print version information and exit"
+msgstr "Ispisuje podatke o izdanju i izlazi"
+
+#: src/baobab-cellrenderers.vala:24
+#, c-format
+msgid "%d item"
+msgid_plural "%d items"
+msgstr[0] "%d stavka"
+msgstr[1] "%d stavke"
+msgstr[2] "%d stavki"
+msgstr[3] "Jedna stavka"
+
+#. Translators: when the last modified time is unknown
+#: src/baobab-cellrenderers.vala:30 src/baobab-location-list.vala:81
+msgid "Unknown"
+msgstr "Nepoznato"
+
+#. Translators: when the last modified time is today
+#: src/baobab-cellrenderers.vala:38
+msgid "Today"
+msgstr "Danas"
+
+#. Translators: when the last modified time is "days" days ago
+#: src/baobab-cellrenderers.vala:43
+#, c-format
+msgid "%lu day"
+msgid_plural "%lu days"
+msgstr[0] "%lu dan"
+msgstr[1] "%lu dana"
+msgstr[2] "%lu dana"
+msgstr[3] "jedan dan"
+
+#. Translators: when the last modified time is "months" months ago
+#: src/baobab-cellrenderers.vala:48
+#, c-format
+msgid "%lu month"
+msgid_plural "%lu months"
+msgstr[0] "%lu mesec"
+msgstr[1] "%lu meseca"
+msgstr[2] "%lu meseci"
+msgstr[3] "jedan mesec"
+
+#. Translators: when the last modified time is "years" years ago
+#: src/baobab-cellrenderers.vala:52
+#, c-format
+msgid "%lu year"
+msgid_plural "%lu years"
+msgstr[0] "%lu godine"
+msgstr[1] "%lu godine"
+msgstr[2] "%lu godina"
+msgstr[3] "jedne godine"
+
+#: src/baobab-location-list.vala:67
+#, c-format
+msgid "%s Total"
+msgstr "%s ukupno"
+
+#: src/baobab-location-list.vala:72
+#, c-format
+msgid "%s Available"
+msgstr "%s je dostupno"
+
+#. useful for some remote mounts where we don't know the
+#. size but do have a usage figure
+#: src/baobab-location-list.vala:86
+#, c-format
+msgid "%s Used"
+msgstr "%s je iskorišćeno"
+
+#: src/baobab-location-list.vala:88
+msgid "Unmounted"
+msgstr "Otkačeno"
+
+#: src/baobab-location.vala:73
+msgid "Home Folder"
+msgstr "Lična fascikla"
+
+#: src/baobab-location.vala:108
+msgid "Computer"
+msgstr "Računar"
+
+#. The only activatable row is "Add location"
+#: src/baobab-preferences-dialog.vala:51
+msgid "Select Location to Ignore"
+msgstr "Izaberi mesto za zanemarivanje"
+
+#: src/baobab-preferences-dialog.vala:91
+msgid "_Add Location"
+msgstr "Dod_aj mesto"
+
+#: src/baobab-window.vala:179
+msgid "Select Folder"
+msgstr "Izaberite fasciklu"
+
+#: src/baobab-window.vala:186
+msgid "Recursively analyze mount points"
+msgstr "Dubinski analiziraj tačke kačenja"
+
+#: src/baobab-window.vala:210
+msgid "Could not analyze volume"
+msgstr "Ne mogu da ispitam disk"
+
+#: src/baobab-window.vala:269
+msgid "translator-credits"
+msgstr ""
+"Miroslav Nikolić <miroslavnikolic@rocketmail.com>\n"
+"Marko M. Kostić <marko.m.kostic@gmail.com>\n"
+"\n"
+"https://gnom.srb — prevod Gnoma na srpski jezik"
+
+#: src/baobab-window.vala:329
+msgid "Failed to open file"
+msgstr "Nisam uspeo da otvorim datoteku"
+
+#: src/baobab-window.vala:346
+msgid "Failed to trash file"
+msgstr "Nisam uspeo obrisati datoteku"
+
+#: src/baobab-window.vala:623
+msgid "Could not scan folder"
+msgstr "Ne mogu da ispitam fasciklu"
+
+#: src/baobab-window.vala:638
+msgid "Scan completed"
+msgstr "Ispitivanje gotovo"
+
+#: src/baobab-window.vala:639
+#, c-format
+msgid "Completed scan of “%s”"
+msgstr "Dovršavam ispitivanje stavke „%s“"
+
+#: src/baobab-window.vala:679
+#, c-format
+msgid "“%s” is not a valid folder"
+msgstr "„%s“ nije ispravna fascikla"
+
+#~ msgctxt "shortcut window"
+#~ msgid "Go back to location list"
+#~ msgstr "Idi nazad na spisak sa mestima"
+
+#~ msgid "_Open Folder"
+#~ msgstr "_Otvori fasciklu"
+
+#~ msgid "This Computer"
+#~ msgstr "Na ovom računaru"
+
+#~ msgid "Go back to location list"
+#~ msgstr "Idi nazad na spisak sa mestima"
+
+#~ msgid "Close"
+#~ msgstr "Zatvori"
+
+#~ msgid "Failed to move file to the trash"
+#~ msgstr "Nisam uspeo da premestim datoteku u smeće"
+
+#~ msgid "Could not always detect occupied disk sizes."
+#~ msgstr "Ne mogu uvek uočiti veličine zauzetih diskova."
+
+#~ msgid "Apparent sizes may be shown instead."
+#~ msgstr "Umesto toga su prikazane približne veličine."
+
+#~ msgid "Could not analyze disk usage."
+#~ msgstr "Ne mogu da analiziram iskorišćenost diska."
+
+#~ msgid "A graphical tool to analyze disk usage."
+#~ msgstr "Grafički alat za ispitivanje iskorišenosti diska."
+
+#~ msgid "Window state"
+#~ msgstr "Stanje prozora"
+
+#~ msgid "The GdkWindowState of the window"
+#~ msgstr "Stanje prozora Gdk prozora"
+
+#~ msgid "_Cancel"
+#~ msgstr "_Otkaži"
+
+#~ msgid "_Open"
+#~ msgstr "_Otvori"
+
+#~ msgid "Failed to show help"
+#~ msgstr "Nisam uspeo da prikažem pomoć"
+
+#~ msgid "org.gnome.baobab"
+#~ msgstr "org.gnome.baobab"
+
+#~ msgid "Baobab"
+#~ msgstr "Baobab"
+
+#~ msgid "Could not scan some of the folders contained in “%s”"
+#~ msgstr "Ne mogu da pregledam neke fascikle sadržane u „%s“"
+
+#~ msgid "baobab"
+#~ msgstr "baobab"
+
+#~ msgid "_About"
+#~ msgstr "_O programu"
+
+#~ msgid ""
+#~ "A simple application which can scan either specific folders (local or "
+#~ "remote) or volumes and give a graphical representation including each "
+#~ "directory size or percentage."
+#~ msgstr ""
+#~ "Jednostavan program koji može da pregleda kako posebne fascikle (mesne "
+#~ "ili udaljene) tako i volumene i da da grafički prikaz koji sadrži veličinu "
+#~ "svakog direktorijuma ili procenat."
+
+#~ msgid "Scan Remote Folder…"
+#~ msgstr "Pregledaj udaljenu fasciklu…"

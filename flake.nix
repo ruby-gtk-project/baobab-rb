@@ -115,6 +115,7 @@
         optionalDirs = builtins.filter (d: builtins.pathExists (./. + "/${d}")) [
           "data"
           "po"
+          "help"
         ];
       in
       {
@@ -150,6 +151,33 @@
               mkdir -p $out/share/glib-2.0/schemas
               cp data/schemas/*.gschema.xml $out/share/glib-2.0/schemas/
               ${pkgs.glib.dev}/bin/glib-compile-schemas $out/share/glib-2.0/schemas
+            fi
+
+            # Desktop entry, AppStream metainfo and icons, so the installed
+            # app is identifiable to a shell/app grid the same way upstream's
+            # package is, and so their translatable strings are reachable.
+            if [ -f data/org.gnome.baobab.desktop.in ]; then
+              mkdir -p $out/share/applications
+              sed 's/\.in$//' data/org.gnome.baobab.desktop.in > $out/share/applications/org.gnome.baobab.desktop
+            fi
+            if [ -f data/org.gnome.baobab.metainfo.xml.in ]; then
+              mkdir -p $out/share/metainfo
+              cp data/org.gnome.baobab.metainfo.xml.in $out/share/metainfo/org.gnome.baobab.metainfo.xml
+            fi
+            if [ -d data/icons ]; then
+              mkdir -p $out/share/icons
+              cp -r data/icons/. $out/share/icons/
+            fi
+
+            # Mallard help pages, installed where yelp's help: URI scheme
+            # looks for them: share/help/<lang>/<domain>/*.page.
+            if [ -d help ]; then
+              for lang_dir in help/*/; do
+                lang="$(basename "$lang_dir")"
+                [ "$lang" = "LINGUAS" ] && continue
+                mkdir -p "$out/share/help/$lang/baobab"
+                cp -r "$lang_dir"* "$out/share/help/$lang/baobab/"
+              done
             fi
 
             # -rbundler/setup puts the bundled gems on the load path, and
@@ -214,7 +242,7 @@
             echo "baobab devshell — ruby $(ruby -e 'print RUBY_VERSION')"
             echo "run the app:   xvfb-run ruby exe/baobab"
             echo "drive the app: xvfb-run ruby test/drive_*.rb"
-            echo "run the specs: ruby -e 'require \"rspec/core\"; exit RSpec::Core::Runner.run([\"--format\", \"progress\", \"--require\", \"spec_helper\", \"spec\"])'"
+            echo "run the specs: xvfb-run -a ruby -e 'require \"rspec/core\"; exit RSpec::Core::Runner.run([\"--format\", \"progress\", \"--require\", \"spec_helper\", \"spec\"])'"
           '';
         };
       });

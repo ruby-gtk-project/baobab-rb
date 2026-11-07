@@ -46,15 +46,24 @@ class TreeListRowSorter
     }
   end
 
+  # Built with no-arg constructors and the expression assigned after,
+  # rather than passed as a constructor argument: the Ruby bindings marshal a
+  # nil `expression` argument by ref-ing it as though it were already a live
+  # GObject, which raises a GLib-GObject-CRITICAL (g_object_ref: assertion
+  # 'G_IS_OBJECT (object)' failed) even though the call itself succeeds.
+  # Setting the property after construction never marshals that nil.
   def self.string_sorter(property)
-    Gtk::StringSorter.new(expression(property))
+    Gtk::StringSorter.new.tap { |sorter| sorter.expression = expression(property) }
   end
 
   def self.numeric_sorter(property)
-    Gtk::NumericSorter.new(expression(property))
+    Gtk::NumericSorter.new.tap { |sorter| sorter.expression = expression(property) }
   end
 
+  # Built from a GLib::Param::Spec rather than the (type, nil, name) overload:
+  # that overload has the same nil-expression marshalling problem this whole
+  # method exists to avoid.
   def self.expression(property)
-    Gtk::PropertyExpression.new(Scanner::Results, nil, property)
+    Gtk::PropertyExpression.new(nil, Scanner::Results.property(property))
   end
 end

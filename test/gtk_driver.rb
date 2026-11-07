@@ -56,6 +56,7 @@ module GtkDriver
       @checks = 0
       @failed_checks = []
       @errored_steps = []
+      @failed_shots = []
       @window_block = nil
     end
 
@@ -117,6 +118,7 @@ module GtkDriver
       end
     rescue StandardError => e
       puts "    shot #{name} failed: #{e.class}: #{e.message}"
+      @failed_shots << "#{name} (#{e.class}: #{e.message})"
       nil
     end
 
@@ -204,8 +206,9 @@ module GtkDriver
         end
         @failed_checks.each { |check| puts "  failed check: #{check}" }
         @errored_steps.each { |step| puts "  errored step: #{step}" }
+        @failed_shots.each { |shot| puts "  failed shot: #{shot}" }
 
-        (@failed_checks + @errored_steps).length.then do |total|
+        (@failed_checks + @errored_steps + @failed_shots).length.then do |total|
           puts(total.zero? ? 'DRIVE OK' : "DRIVE FAILED (#{total})")
           exit(total.zero? ? 0 : 1)
         end

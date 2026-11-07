@@ -698,9 +698,20 @@ class Window < Adwaita::ApplicationWindow
       PreferencesDialog.new(@settings).build.present(self)
     end
 
+    # Upstream's win.help: open the Mallard help pages ported into help/C
+    # under the 'help:baobab' URI, exactly as upstream does. That URI only
+    # resolves on a system with yelp (or another help: handler) registered;
+    # with none, Gtk.show_uri launches nothing and fails silently, so this
+    # falls back to opening the local index page directly.
     def show_help
-      Gtk.show_uri(screen: self, uri: 'help:baobab', timestamp: Gdk::CURRENT_TIME)
+      if Gio::AppInfo.get_default_for_uri_scheme('help').nil?
+        Gtk.show_uri(screen: self, uri: "file://#{local_help_index}", timestamp: Gdk::CURRENT_TIME)
+      else
+        Gtk.show_uri(screen: self, uri: 'help:baobab', timestamp: Gdk::CURRENT_TIME)
+      end
     end
+
+    def local_help_index = File.expand_path('../help/C/index.page', __dir__)
 
     def show_about
       AboutDialog.new.build.present(self)
