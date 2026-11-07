@@ -111,8 +111,7 @@ module GtkDriver
         FileUtils.mkdir_p(@shots)
 
         File.join(@shots, "#{name}.png").then do |path|
-          settle
-          render(target, path)
+          render_when_ready(target, path)
           puts "    shot #{path}"
           path
         end
@@ -130,14 +129,29 @@ module GtkDriver
     # popover popup, a menu button going active) has not necessarily been
     # given a frame clock tick yet — GtkWidgetPaintable#snapshot then
     # produces no render node at all, not a stale picture, which is the
-    # "not realised yet?" error. One driver tick is normally enough, but a
-    # shot taken in the very step that triggered the change needs this
-    # settling nudge first.
-    def settle
-      (Process.clock_gettime(Process::CLOCK_MONOTONIC) + 0.3).then do |deadline|
+    # "not realised yet?" error.
+    def settle(seconds)
+      (Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds).then do |deadline|
         while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
           GLib::MainContext.default.iteration(false)
         end
+      end
+    end
+
+    # One settled tick is normally enough, but how long a frame clock tick
+    # actually takes depends on how loaded the machine is, which this
+    # process has no way to know in advance. Rather than guess a single
+    # fixed budget, retry render with a growing settle in front of it; a
+    # machine under heavy load gets more time, a quiet one does not wait
+    # any longer than its first attempt needs.
+    def render_when_ready(target, path, attempt = 1)
+      settle(0.2 * attempt)
+      render(target, path)
+    rescue RuntimeError => e
+      if attempt < 5
+        render_when_ready(target, path, attempt + 1)
+      else
+        raise e
       end
     end
 
