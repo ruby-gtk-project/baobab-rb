@@ -118,9 +118,30 @@ class Application
     def start_up
       Adwaita.init
       style.install
+      install_icons
       Location.excluded_locations_provider = -> { excluded_locations }
       install_accels
     end
+
+    # Upstream's data/icons/scalable/actions/*.svg (the rings/treemap chart
+    # switcher icons) are shipped inside the GResource bundle and found
+    # automatically once the application sets its resource base path. The
+    # port has no GResource bundle, so the on-disk icons are found instead by
+    # adding their directory to the default icon theme's search path. GTK's
+    # icon theme only looks inside a named-theme subdirectory of a search
+    # path (as it would for an installed hicolor/Adwaita tree), so the file is
+    # ported to `data/icons/hicolor/scalable/actions/` rather than upstream's
+    # unwrapped `data/icons/scalable/actions/`, alongside this port's existing
+    # `data/icons/hicolor/` app icons.
+    def install_icons
+      Gdk::Display.default.then do |display|
+        unless display.nil?
+          Gtk::IconTheme.get_for_display(display).add_search_path(icons_directory)
+        end
+      end
+    end
+
+    def icons_directory = File.expand_path('../data/icons', __dir__)
 
     def install_accels
       ACCELS.each { |action, accels| app.set_accels_for_action(action, accels) }
