@@ -74,13 +74,18 @@ DriveTarget.new(Application.new(argv: [], app_id: 'org.gnome.baobab.Drive')).the
 
       # The scan runs on a worker thread and drains onto the main loop every
       # 100ms (Scanner::DRAIN_INTERVAL); block here, pumping the same main
-      # loop the driver's own timer runs on, until the results page shows or
-      # ten seconds pass, rather than gambling on how many 500ms driver ticks
-      # a drain happens to need.
+      # loop the driver's own timer runs on, until the scan actually
+      # completes or ten seconds pass. The nav_view's tag flips to 'results'
+      # the instant scan_location starts the scan (set_ui_state(result_page,
+      # true) runs before the scanner has produced anything), so waiting on
+      # the tag races the scan itself and was observed to pass before the
+      # rings chart had a root. show_results only runs once the scanner's
+      # "completed" signal fires, and it is what gives the rings chart its
+      # tree_root, so wait on that instead.
       deadline = Time.now + 10
       context = GLib::MainContext.default
 
-      until app.window.nav_view.visible_page.tag == 'results' || Time.now > deadline
+      until !app.window.rings_chart.tree_root.nil? || Time.now > deadline
         context.iteration(true)
       end
     end
@@ -104,6 +109,41 @@ DriveTarget.new(Application.new(argv: [], app_id: 'org.gnome.baobab.Drive')).the
 
     d.step('back to the rings chart') do
       app.window.active_chart_action.activate(GLib::Variant.new('rings'))
+    end
+
+    d.step('the chart\'s own right-click popover opens on the root wedge') do
+      chart = app.window.rings_chart
+      # The root item fills the centre of the rings chart's drawing area, so
+      # a highlight test there is the same thing a right click at that point
+      # would find, without needing to synthesise a real pointer event.
+      d.check('the centre point highlights the root item') do
+        chart.send(:highlight_item_at_point, chart.width / 2.0, chart.height / 2.0)
+      end
+      chart.send(:show_popover_at, chart.width / 2, chart.height / 2)
+      d.check('the chart popover is visible') { chart.send(:context_menu).visible? }
+      d.check('open-file, copy-path and trash-file are enabled on a real item') do
+        %w[open-file copy-path trash-file].all? { |name| chart.actions.fetch(name).enabled? }
+      end
+      d.shot('14-chart-popover')
+      chart.send(:context_menu).popdown
+    end
+
+    d.step('the chart\'s copy-path action copies the root path, same as the treeview one') do
+      app.window.rings_chart.actions.fetch('copy-path').activate(nil)
+    end
+
+    d.step('the chart\'s open-file action fails cleanly off-screen, same as the window would') do
+      app.window.rings_chart.actions.fetch('open-file').activate(nil)
+      d.check('still on the results page after an open attempt') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
+    end
+
+    d.step('the chart\'s trash-file action toasts rather than crashing, same as treeview-trash') do
+      app.window.rings_chart.actions.fetch('trash-file').activate(nil)
+      d.check('still on the results page after the chart\'s own trash attempt') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
     end
 
     d.step('zoom the rings chart out, then in') do
@@ -132,6 +172,16 @@ DriveTarget.new(Application.new(argv: [], app_id: 'org.gnome.baobab.Drive')).the
       d.check('the rings chart is now rooted on the child') { app.window.rings_chart.tree_root == child }
       d.shot('08-chart-rooted-on-child')
 
+      # Upstream (baobab-chart.vala:507-524) only recomputes each action's
+      # enabled state inside show_popover_at, same as this port's
+      # update_action_sensitivity, so a real right click re-syncs it right
+      # before the menu is shown. The earlier right-click step in this
+      # driver left 'move-up' disabled, synced for the chart's root (whose
+      # own parent is nil, so move-up was correctly insensitive there); it
+      # has not been re-synced since, same as it would not be for a real
+      # popover that stayed closed. Call the same sync a right click would,
+      # for the root the chart is on now, before using the action directly.
+      app.window.rings_chart.send(:update_action_sensitivity)
       app.window.rings_chart.actions.fetch('move-up').activate(nil)
       d.check('chart.move-up returns the chart to the scan root') { app.window.rings_chart.tree_root == scan_root }
     end
@@ -254,10 +304,15 @@ DriveTarget.new(Application.new(argv: [], app_id: 'org.gnome.baobab.Drive')).the
     d.step('rescan the current location') do
       app.window.actions.fetch('reload').activate(nil)
 
+      # scan_location resets selection.model to a fresh, empty Gio::ListStore
+      # synchronously before the scan itself even starts, so (as with the
+      # first scan above) waiting on it rather than the nav_view's tag —
+      # which never leaves 'results' across a reload at all — is what
+      # actually tells apart "reload is still running" from "reload landed".
       deadline = Time.now + 10
       context = GLib::MainContext.default
 
-      until app.window.nav_view.visible_page.tag == 'results' || Time.now > deadline
+      until app.window.selection.n_items.positive? || Time.now > deadline
         context.iteration(true)
       end
     end

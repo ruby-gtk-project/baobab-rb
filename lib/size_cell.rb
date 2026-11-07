@@ -13,6 +13,11 @@ require_relative 'scanner'
 # item is unset or errored, and the formatted byte count otherwise.
 #
 class SizeCell < Adwaita::Bin
+  # See FileCell's type_register for why: without it, a cell handed back
+  # from C on unbind/teardown can come back as plain Adwaita::Bin, which has
+  # no `item=` and crashes the process rather than raising a catchable error.
+  type_register
+
   attr_reader :item
 
   def initialize

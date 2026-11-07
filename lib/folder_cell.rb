@@ -13,6 +13,12 @@ require_relative 'name_cell'
 # NameCell bound to the same item.
 #
 class FolderCell < Adwaita::Bin
+  # See FileCell's type_register (file_cell.rb) for why: without it, a cell
+  # handed back from C on unbind/teardown can come back as plain
+  # Adwaita::Bin, which has no `item=` and crashes the process rather than
+  # raising a catchable error.
+  type_register
+
   attr_reader :item
 
   def initialize

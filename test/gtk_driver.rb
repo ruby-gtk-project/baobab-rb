@@ -111,6 +111,7 @@ module GtkDriver
         FileUtils.mkdir_p(@shots)
 
         File.join(@shots, "#{name}.png").then do |path|
+          settle
           render(target, path)
           puts "    shot #{path}"
           path
@@ -123,6 +124,22 @@ module GtkDriver
     end
 
     def default_window = @window_block&.call
+
+    # Drains the main context briefly without blocking the step. A widget
+    # whose content changed earlier in this same step (a page push, a
+    # popover popup, a menu button going active) has not necessarily been
+    # given a frame clock tick yet — GtkWidgetPaintable#snapshot then
+    # produces no render node at all, not a stale picture, which is the
+    # "not realised yet?" error. One driver tick is normally enough, but a
+    # shot taken in the very step that triggered the change needs this
+    # settling nudge first.
+    def settle
+      (Process.clock_gettime(Process::CLOCK_MONOTONIC) + 0.3).then do |deadline|
+        while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+          GLib::MainContext.default.iteration(false)
+        end
+      end
+    end
 
     # --- Running -----------------------------------------------------------
 

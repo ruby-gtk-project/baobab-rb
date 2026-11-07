@@ -15,6 +15,16 @@ require_relative 'progress_cell'
 # fraction and a NameCell bound to the item.
 #
 class FileCell < Adwaita::Bin
+  # Required so GTK can resolve this subclass's own `item=`/`list_row=` when
+  # it hands a cell's child back to us from C (unbind, teardown, a later
+  # rebind on a recycled Gtk::ColumnViewCell) — without it the Ruby wrapper
+  # that comes back is sometimes just the registered ancestor, Adwaita::Bin,
+  # which has no `item=` and crashes the process outright (no Ruby exception
+  # to rescue; it is a fatal error at the GObject Introspection boundary).
+  # Non-deterministic because it depends on whether the original Ruby
+  # wrapper for this exact instance is still alive when GTK asks for it.
+  type_register
+
   attr_reader :item, :list_row
 
   def initialize
