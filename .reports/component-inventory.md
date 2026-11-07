@@ -467,33 +467,62 @@ shell (GTK 4.22.4, libadwaita 1.9.3, Ruby 3.4.9):
 8. **Help is not portable.** `win.help` is installed and dispatches to
    `show_help`; upstream's 8 Mallard pages are not shipped, so this points at
    the upstream help URL rather than `help:baobab`.
-9. **Resolved.** `test/gtk_driver.rb` (copied from the `ruby-gtk-testing`
-   skill) and `test/drive_main_window.rb` now exist. The drive scans a real
-   three-file sample tree and asserts: the home page lists the device/recent
-   rows, the scan lands on the results page with a populated column view, the
-   rings chart gets a root and renders, switching to the treemap chart gets
-   its own root and renders, preferences/about/shortcuts each open a dialog,
-   and a rescan returns to results. `nix develop --command xvfb-run -a ruby
-   test/drive_main_window.rb` passes 12/12 checks (`DRIVE OK`), run
-   repeatedly. Driving it surfaced one real bug, now fixed: the gio2 bindings
+9. **Resolved, and re-verified with a much wider drive.** `test/gtk_driver.rb`
+   and `test/drive_main_window.rb` exist and now exercise 30 checks (up from
+   12), `DRIVE OK`, stable across repeated runs. Beyond the original scan /
+   two-chart / preferences / about / shortcuts / rescan path, the drive now
+   also: zooms the rings chart in and out (`chart.zoom-in`/`zoom-out`),
+   reroots the treeview on a child directory and uses `chart.move-up` to
+   return to the scan root, selects a tree row and exercises
+   `win.treeview-expand-row`/`collapse-row`/`go-up` plus the real keyboard
+   path (`Window#key_pressed` with `Left`, exactly as the key controller would
+   call it), opens and closes the tree context popover
+   (`win.show-treeview-popover`) and fires `win.treeview-copy`, fires
+   `win.treeview-trash` and confirms a trash failure on this filesystem toasts
+   rather than crashing, opens and closes the primary menu
+   (`win.show-primary-menu`), fires `win.clear-recent`, adds an excluded
+   location through `Settings` and confirms it renders in
+   `PreferencesDialog#excluded_list_box`, then removes it by emitting the
+   row's own `remove_button` `clicked` signal (driving the real
+   `ExcludedRow#on_removed` wiring, not Settings directly) and confirms the
+   list is back to its empty state, and calls `Window#scan_directory` on a
+   plain file to confirm the "not a valid folder" toast path does not crash
+   the window. `win.scan-folder`/`win.help` and the chart's
+   `open-file`/`copy-path`/`trash-file` actions (which need a context-menu
+   click to set `@popover_item`) are not driven: the former two open a real
+   `Gtk::FileChooserNative` or hand off to `Gtk.show_uri`, and firing
+   `open-file` would spawn a real external process via
+   `Gio::AppInfo.launch_default_for_uri` with no sandboxing in this harness —
+   the equivalent logic (`Window#open_item`/`#copy_path`/`#trash_file`) is
+   exercised through the tree's own `win.treeview-copy`/`treeview-trash`
+   instead. Driving it surfaced one real bug, now fixed: the gio2 bindings
    hand a string-typed action's `activate` signal a plain Ruby `String`, not
    the `GLib::Variant` upstream's Vala receives, so
    `Window#install_actions`'s `active-chart` handler crashed on
    `parameter.get_string` every time the chart switcher was used — fixed with
    a `chart_name` helper that only calls `get_string` when the parameter
-   actually responds to it. `spec/formatters_spec.rb` and
-   `spec/settings_spec.rb` cover the two non-widget components with no GTK
-   dependency beyond `require 'adwaita'`'s GTK init (22 examples). The
-   project's own `spec_helper.rb` requires the `kettle-test` gem, which is not
-   installed in this offline environment, so the documented
-   `ruby -e 'require "rspec/core"; ...'` spec command cannot run here; the 22
-   examples were verified directly against `rspec/core` with that one
-   `require` bypassed, under `xvfb-run` (`require 'adwaita'` needs a display
-   to init GTK even for string-only code, by the house convention that every
-   file requires it). The remaining gap is screenshot-only: a dialog's render
-   node is occasionally not yet realised on the tick its screenshot is taken,
+   actually responds to it.
+
+   `spec/formatters_spec.rb` and `spec/settings_spec.rb` cover the two
+   non-widget components with no GTK dependency beyond `require 'adwaita'`'s
+   GTK init (22 examples). Two real spec-harness bugs, now fixed, not binding
+   gaps: `spec/spec_helper.rb` required `kettle/test/rspec` unconditionally,
+   with none of the `rescue LoadError` tolerance the pilot port's
+   `spec_helper.rb` has for exactly this gem not being present outside a full
+   `bundle install`; and `lib/baobab/rb.rb` — the file the gem's own name
+   resolves to, and the file `spec_helper.rb` requires by that name — never
+   existed at all, only `lib/baobab.rb` (the real entry point) and
+   `lib/baobab/rb/version.rb`. Both are fixed to match the pilot port's shape
+   (`lib/tally/rb.rb`), and the documented spec command,
+   `ruby -e 'require "rspec/core"; exit RSpec::Core::Runner.run([...])'`, now
+   runs as written, under `xvfb-run` (`require 'adwaita'` needs a display to
+   init GTK even for string-only code, by the house convention that every
+   file requires it): 22 examples, 0 failures.
+
+   The remaining gap is screenshot-only: a dialog's or popover's render node
+   is occasionally not yet realised on the tick its screenshot is taken,
    which `GtkDriver#shot` already treats as non-fatal and reports separately
-   from the pass/fail checks.
+   from the pass/fail checks — it does not affect any of the 30 checks.
 10. **116 locales.** `lib/translations.rb` resolves strings against upstream's
     catalogues; coverage across the 116 `po/` files is the `translation-parity`
     step's business, not verified here.

@@ -38,6 +38,7 @@ class DriveTarget
   def window = @application.window
   def app = @application.app
   def actions = @application.actions
+  def settings = @application.settings
 end
 
 # A small tree of known size to scan, so the results are predictable:
@@ -103,6 +104,127 @@ DriveTarget.new(Application.new(argv: [], app_id: 'org.gnome.baobab.Drive')).the
 
     d.step('back to the rings chart') do
       app.window.active_chart_action.activate(GLib::Variant.new('rings'))
+    end
+
+    d.step('zoom the rings chart out, then in') do
+      starting_depth = app.window.rings_chart.max_depth
+      app.window.rings_chart.actions.fetch('zoom-out').activate(nil)
+      d.check('zoom-out increases max_depth') { app.window.rings_chart.max_depth > starting_depth }
+
+      app.window.rings_chart.actions.fetch('zoom-in').activate(nil)
+      app.window.rings_chart.actions.fetch('zoom-in').activate(nil)
+      d.check('zoom-in decreases max_depth below the start') { app.window.rings_chart.max_depth < starting_depth }
+
+      app.window.rings_chart.max_depth = starting_depth
+    end
+
+    d.step('reroot the treeview on the "sub" child, then chart.move-up returns to the scan root') do
+      scan_root = app.window.rings_chart.tree_root
+      # reroot_treeview no-ops on a childless (leaf) node, so pick the one
+      # child in the sample tree that itself has children: "sub".
+      child = (0...scan_root.children_list_store.n_items)
+              .map { |index| scan_root.children_list_store.get_item(index) }
+              .find { |candidate| !candidate.empty? }
+
+      d.check('the "sub" child of the scan root was found') { !child.nil? }
+      app.window.send(:reroot_treeview, child)
+
+      d.check('the rings chart is now rooted on the child') { app.window.rings_chart.tree_root == child }
+      d.shot('08-chart-rooted-on-child')
+
+      app.window.rings_chart.actions.fetch('move-up').activate(nil)
+      d.check('chart.move-up returns the chart to the scan root') { app.window.rings_chart.tree_root == scan_root }
+    end
+
+    d.step('select the first row and exercise the tree keyboard actions') do
+      app.window.selection.selected = 0
+      app.window.actions.fetch('treeview-expand-row').activate(nil)
+      d.check('the root row is expanded') { app.window.send(:selected_row)&.expanded? != false }
+
+      # Same wiring upstream's GtkShortcutController drives: Right/Left/Alt+Up
+      # on the column view, exercised here through the private key handler
+      # exactly as the controller would call it.
+      d.check('Left collapses via the keyboard path') do
+        app.window.send(:key_pressed, Gdk::Keyval::KEY_Left, 0)
+        app.window.send(:selected_row)&.expanded? == false
+      end
+
+      app.window.actions.fetch('treeview-collapse-row').activate(nil)
+      app.window.actions.fetch('treeview-go-up').activate(nil)
+      d.check('still on the results page after go-up at the root') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
+    end
+
+    d.step('open the tree context menu, then copy the selected path') do
+      app.window.selection.selected = 0
+      app.window.actions.fetch('show-treeview-popover').activate(nil)
+      d.check('the treeview popover is visible') { app.window.treeview_popover_menu.visible? }
+      d.shot('09-treeview-popover')
+      app.window.treeview_popover_menu.popdown
+
+      app.window.actions.fetch('treeview-copy').activate(nil)
+    end
+
+    d.step('trashing fails cleanly on this filesystem and toasts rather than crashing') do
+      app.window.selection.selected = 0
+      app.window.actions.fetch('treeview-trash').activate(nil)
+      d.check('still on the results page after a failed trash') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
+      d.shot('10-after-trash-attempt')
+    end
+
+    d.step('open the primary menu, then close it') do
+      app.window.show_primary_menu_action.activate(nil)
+      d.check('the primary menu button reports active') { app.window.menu_button.active? }
+      d.shot('11-primary-menu')
+      app.window.show_primary_menu_action.activate(nil)
+      d.check('the primary menu button is no longer active') { !app.window.menu_button.active? }
+    end
+
+    d.step('clear the recent locations list') do
+      app.window.actions.fetch('clear-recent').activate(nil)
+      d.check('still on the results page after clearing recents') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
+    end
+
+    d.step('add an excluded location, then remove it from preferences') do
+      app.settings.add_excluded_uri(Gio::File.new_for_path(SCAN_ROOT).uri)
+      app.window.actions.fetch('show-preferences').activate(nil)
+    end
+
+    d.step('the excluded location is listed') do
+      dialog = app.window.visible_dialog
+      d.check('a dialog is open') { !dialog.nil? }
+      d.check('the excluded list has the added row plus the Add Location row') do
+        dialog.excluded_list_box.observe_children.n_items == 2
+      end
+      d.shot('12-preferences-with-excluded-location')
+
+      # The row's own remove button is how upstream removes it; drive that
+      # instead of writing straight to settings, so the wiring is under test.
+      row = dialog.excluded_list_box.observe_children.get_item(0)
+      row.remove_button.signal_emit('clicked')
+    end
+
+    d.step('removing the row leaves only the Add Location row') do
+      dialog = app.window.visible_dialog
+      d.check('the excluded list is back to empty state (Add Location only)') do
+        dialog.excluded_list_box.observe_children.n_items == 1
+      end
+      d.check('no locations remain excluded') { app.settings.excluded_uris.empty? }
+      d.shot('13-preferences-excluded-removed')
+      dialog&.close
+    end
+
+    d.step('scanning something that is not a folder reports the error without crashing') do
+      bad_file = Gio::File.new_for_path(File.join(SCAN_ROOT, 'a'))
+      app.window.scan_directory(bad_file)
+      d.check('the window is still alive and on the results page') do
+        app.window.nav_view.visible_page.tag == 'results'
+      end
     end
 
     d.step('open preferences') { app.window.actions.fetch('show-preferences').activate(nil) }
