@@ -70,7 +70,7 @@ class Window < Adwaita::ApplicationWindow
   # Upstream's actions_while_scanning: scanning disables starting another scan.
   ACTIONS_WHILE_SCANNING = { 'scan-folder' => false }.freeze
 
-  CHARTS = { 'rings' => 'Rings Chart', 'treemap' => 'Treemap Chart' }.freeze
+  CHARTS = { 'rings' => '_Rings Chart', 'treemap' => '_Treemap Chart' }.freeze
 
   COLUMNS = {
     folder:        ['Folder', FileCell],
