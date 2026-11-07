@@ -1,5 +1,15 @@
 # Component inventory — baobab-rb vs upstream (org.gnome.baobab, origin/main)
 
+> **Stale note, added by the `Parity reports` audit at `ff9ec7c`:** this
+> document was last written at `8662ed4`, before `785d7e3` ported the two
+> action-icon SVGs this document's "Gaps found" §1 and the table row below
+> still call missing. Both icons are now present at
+> `data/icons/hicolor/scalable/actions/view-ringschart-symbolic.svg` and
+> `view-treemap-symbolic.svg`. Left in place rather than deleted, per the
+> accountability-ensurance rule of rewriting in context rather than erasing
+> a prior finding — see `.reports/component-identification.md` and
+> `.reports/accountability-ensurance.md` for the current-state re-check.
+
 Survey only; no app code written in this step. Produced with the
 `component-identification` method: upstream's `src/*.vala` + `data/ui/*.ui`
 files are the component units (Baobab has no GResource-templated GJS/Rust

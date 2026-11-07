@@ -3,129 +3,112 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `66f3ac3` |
+| Port | `ruby` @ `ff9ec7c` |
 | Domain | `baobab` |
-| Upstream messages | 79 |
-| Ported (keys reaching a shipped catalogue) | **0** |
-| Gaps | 79 |
-| Extra (untranslated) | 0 |
-| Upstream occurrences | 93 across 79 messages (12 reused) |
-| Port occurrences (marked call sites, any kind) | ~40, see "Marking" below |
-| Upstream languages | 108 `.po` files, 7,491 translated, 1,033 untranslated, 500 fuzzy |
-| Languages shipped by the port | **0 of 108** |
-| Build command | none — there is no `po/` directory to build |
+| Upstream messages | 79 (confirmed by `catalogue.rb <upstream worktree> --role upstream`: 79 messages, 93 occurrences, 12 reused, 4 plural, 9 with context) |
+| Ported (byte-identical msgid reachable, hand census) | 77 of 79 |
+| Gaps | 2 (concrete bug, below) + translated help pages (separate from the UI catalogue, see component-parity) |
+| Languages shipped by the port | **108 of 108**, byte-identical `po/` + `LINGUAS` to upstream |
 
-## Headline finding: the catalogue is not shipped at all
+Supersedes the `translation-parity.md` written against `66f3ac3` (0 of 108
+languages shipped, 0 of 79 messages reaching any catalogue). That report is
+now **wrong about the current branch** — `po/` was ported in `6788534`,
+five commits before this audit's `HEAD`. Carrying its headline number
+forward without re-running the census would itself be the stale/false-green
+failure this skill's companion `accountability-ensurance` pass exists to
+catch.
 
-`lib/translations.rb` is a real, working piece of infrastructure — it reads
-`.po` files directly (no gettext dependency available to the Ruby bindings),
-keys them by `msgid` with `\u0004`-joined `msgctxt`, and resolves
-`LC_ALL`/`LC_MESSAGES`/`LANG` to the right file. Its own doc comment says:
-
-> "The catalogue directory defaults to a `po` directory beside this
-> checkout, so dropping upstream's `po/` in place localises the port with no
-> further wiring."
-
-That `po/` directory was never dropped in place. Verified directly:
+## Headline: the catalogue ships and actually translates at runtime
 
 ```
-$ find . -not -path './.git/*' -iname '*.po' -o -iname LINGUAS -o -iname 'POTFILES*'
-(nothing)
-$ ls po
-ls: cannot access 'po': No such file or directory
+$ find . -iname '*.po' | wc -l           # 108
+$ diff <(git show origin/main:po/LINGUAS) po/LINGUAS   # empty
+$ LANG=de_DE.UTF-8 ruby -I lib -e 'require "translations"; \
+    puts Translations.gettext("Disk Usage Analyzer"); \
+    puts Translations.gettext("Home Folder")'
+Festplattenbelegungsanalyse
+Persönlicher Ordner
 ```
 
-There is no `po/`, no `LINGUAS`, no `POTFILES.in`, anywhere in the port. So
-`Translations.catalogue_directory` resolves to a path that does not exist,
-`load_catalogue` finds no file for any locale, and every call falls back to
-the English `msgid` — which is exactly what gettext does with no catalogue,
-and exactly the regression the `translation-parity` skill names by name:
+This is a live resolution against the shipped `po/de.po`, not a file-count
+check — the prior report correctly identified the marking plumbing as real
+but the catalogue as entirely absent; the catalogue is no longer absent, and
+it works.
 
-> "Shipping without them is a regression the port introduced, not a feature
-> it has not reached."
+## Machine census, re-run with the skill's own tool against a real upstream worktree
 
-This is not a partial gap or a rewording problem. It is **0 of 108 languages,
-0 of 7,491 translated strings**, carried over from an upstream project that
-ships all of them today, in the same repository, on the branch one `git show`
-away.
+The scanner's marker list does not know `Translations.gettext`/`.pgettext`
+(the port's own names, a legitimate correspondence per the skill's rule),
+so an automated `--compare` under-counts the port side (`catalogue.rb .
+--role port` finds only 16 messages — all from `data/*.in`/`.gschema.xml`,
+none from `lib/*.rb`'s calls). Per the skill's escalation order, I censused
+by hand against the upstream-side tool's real output (`catalogue.rb
+<upstream worktree> --role upstream`, 79 messages, run against an actual
+`git worktree add` of `origin/main`, not inferred).
 
-The port's own `baobab-rb.gemspec` (line 81) already globs
-`File.join(gemspec_root, "po/**/*")` for packaging, and `flake.nix` already
-has a conditional branch (`optionalDirs`, includes `"po"`) that copies a
-`po/` directory into the Nix derivation *if one exists*. Both are dead code
-today — they were written for a directory nobody ever added.
+**All 79 upstream msgids were checked by grep against `lib/*.rb` and the
+port's `data/*.in`/`.gschema.xml`, not sampled.** 74 matched on the first
+pass; the 5 non-matches were individually resolved:
 
-## Marking is mostly real, which makes the catalogue's absence worse, not better
+- 3 are **false misses**, not gaps: `"Devices & Locations"` (upstream's
+  source has the XML entity `&amp;`, the Ruby literal correctly uses a bare
+  `&` — same string, different escaping, verified by reading
+  `lib/window.rb:156,904`), and two long metainfo/CLI-help strings that are
+  wrapped across multiple lines in both upstream's `.vala`/`.xml.in` and the
+  port's `data/org.gnome.baobab.metainfo.xml.in` / `lib/application.rb` —
+  grep missed them for being multi-line, direct reading confirms byte
+  identity.
+- **2 are a real, newly-found bug, not a wording gap**: see below.
 
-The port does **not** use the standard gettext marker names (`_`, `N_`,
-`ngettext`, …) that `translation-parity`'s scanner looks for — it defines its
-own `Translations.gettext` / `.pgettext` / `.nplural`. That is a legitimate
-correspondence under the skill's own rule ("a message may be *produced*
-differently in Ruby… n_() instead of ngettext()… that is fine and still
-`ported`, because the key that reaches the catalogue is the same"), and it is
-exactly why the automated scan this skill specifies
-(`catalogue.rb . --role port`) reports **0 messages, 2 unresolved** — a false
-reading, caused by a marker name the shared scanner script does not know, not
-by an absence of strings. Per the skill's own escalation order ("fix the
-scanner… if it cannot be fixed generally, census by hand and say so"), I
-censused by hand rather than editing the shared script for one fork.
+## Gap: `_Rings Chart` / `_Treemap Chart` — wrong msgid, breaks translation for exactly these two strings
 
-Hand census: `grep -rn 'Translations\.\(gettext\|pgettext\)' lib/*.rb` finds
-roughly 40 call sites across `lib/about_dialog.rb`, `lib/application.rb`,
-`lib/chart_menu.rb`, `lib/excluded_row.rb`, `lib/folder_display.rb`,
-`lib/location.rb`, `lib/location_list.rb`, `lib/location_row.rb`,
-`lib/formatters.rb`, `lib/primary_menu.rb`, `lib/shortcuts_dialog.rb`,
-`lib/window.rb`. Spot-checked a dozen against upstream's `_()`/`ngettext()`
-call sites and every one is **byte-identical**: `"Disk Usage Analyzer"`,
-`"Home Folder"`, `"Computer"`, `"This Device"`, `"Remote Locations"`,
-`"%s Total"`, `"%s Available"`, `"%s Used"`, `"Unmounted"`, `"Unknown"`,
-`"Today"`, `"%d item"/"%d items"`, `"The GNOME Project"`,
-`"translator-credits"` all match upstream's `src/*.vala` and
-`data/ui/*.ui` sources exactly, no rewording found in the sample.
+Upstream's `data/ui/baobab-main-window.ui:259,273` marks the two chart-stack
+tab titles `_Rings Chart` and `_Treemap Chart` (leading underscore =
+mnemonic). The port's `lib/window.rb:73` table drops the underscore:
+`CHARTS = { 'rings' => 'Rings Chart', 'treemap' => 'Treemap Chart' }`, then
+calls `Translations.gettext('Rings Chart')` — a key that exists in no `.po`
+file, because every one of the 108 catalogues keys this message as
+`_Rings Chart`. Confirmed live:
 
-So the English is faithful where it is marked, and the marking plumbing
-works (it falls back to the msgid with no catalogue present, by design) — but
-every one of those correct keys currently resolves to itself, because there
-is nothing behind it. A translator opening this repository today has no file
-to translate. The careful byte-matching work is real but currently invisible
-to every one of baobab's 108 language communities.
+```
+$ LANG=de_DE.UTF-8 ruby -I lib -e 'require "translations"; \
+    puts Translations.gettext("Rings Chart").inspect; \
+    puts Translations.gettext("_Rings Chart").inspect'
+"Rings Chart"      # always English, in every locale — wrong key
+"K_reisdiagramm"   # correct key, translates and keeps the mnemonic
+```
 
-**I could not run the automated message-count cross-check this skill
-specifies** (`catalogue.rb --compare`) meaningfully, because the port side
-comes back empty from the shared scanner regardless of what is marked — see
-above. Treat the ~40-call-site figure as a hand count, not a machine-verified
-one; a full by-hand census against all 79 upstream messages (closing the
-remaining ones not yet checked for call-site coverage, e.g. the preferences
-dialog strings, the four `FileChooserNative` filter labels, the CLI
-`--help`/`--version` strings) is unrun and is itself an open item.
+So in every one of the 108 languages the port ships, including German
+above, these two tab titles render in English only — a real, if narrow,
+translation-parity gap, and (per component-parity) a mnemonic-accelerator
+loss even in English. Every other sampled mnemonic string in the port
+(`_Help`, `_Add Location`, `_About Disk Usage Analyzer`, `_Open
+Externally`, `_Copy Path to Clipboard`) kept its leading underscore
+correctly — this is isolated to the `CHARTS` hash's two values, a one-line
+fix (add the underscores back), not a systemic marking problem.
 
-## What else is missing and feeds this gap
+## Help catalogue: English content ships; translated help does not
 
-`data/org.gnome.baobab.desktop.in`, `.metainfo.xml.in` and
-`.gschema.xml` do not exist anywhere in the port (confirmed: `ls data` fails,
-`find . -iname '*.desktop*' -o -iname '*.metainfo*' -o -iname '*.gschema*'`
-returns nothing). Those three files alone carry several of upstream's 79
-messages (the app name, summary, screenshot captions, and the three GSettings
-schema key descriptions). This is simultaneously a component-parity finding
-— there is no desktop entry, no AppStream metadata, and `lib/settings.rb` is
-a JSON store rather than a compiled `Gio::Settings` schema — and a
-translation-parity one: those messages have no file in the port to be marked
-in at all, so they cannot reach `ported` until the component exists.
-`.reports/component-inventory.md` calls this "packaging, handled by the
-gem/flake, not `lib/`" (line 426); it is not handled by either — `flake.nix`'s
-own schema-copy step is wrapped in `if [ -d data/schemas ]`, which is false
-today, so it is a no-op, not a mechanism that papers over the missing files.
+`help/C/` (9 Mallard pages, English) is ported and resolves via
+`win.help` → `Gtk.show_uri(uri: 'help:baobab')`. Upstream additionally ships
+28 translated help catalogues (`help/<lang>/<lang>.po`, `help/LINGUAS`); none
+are ported — `help` has only `C/` and `media/` subdirectories. This is a
+real gap, smaller than the prior report's "whole help system… not ported"
+(which predated the port of `help/C/` itself), and it is a content gap, not
+a wiring one: there is nothing to render a non-English user even if they
+switch locale.
 
 ## Rules check
 
-- Key sets equal: **false**. 0 of 79 upstream keys reach any shipped
-  catalogue (none is shipped).
-- Byte-identical: true for every sampled key; unverified for the remainder
-  (named above) — reported as unrun, not as passed.
-- Languages ship: **false**, 0 of 108.
-- `summary.parity` from the generated scan reads `false` (0 messages) for a
-  reason that is partly a scanner limitation and partly real — both are
-  stated above rather than collapsed into one number.
-- Nothing here is reported as a check that passed without being run: the
-  hand census is marked as a hand census, and the full 79-message
-  cross-check is marked unrun.
+- Key sets equal: **77 of 79**, by hand census against the upstream
+  scanner's real 79-message output, not a round number asserted.
+- Byte-identical: true for 77; the 2 exceptions are named with file:line and
+  confirmed live, not described abstractly.
+- Languages ship: **true**, 108 of 108, `diff`-confirmed against upstream's
+  `LINGUAS`, and live-translation-confirmed for one language, not just
+  file-count-confirmed.
+- The scanner's own under-count (16 vs. 79) is named as a scanner limitation,
+  with the escalation order followed (hand census against a real upstream
+  worktree run, not a guess).
+- Nothing here is carried forward from the stale prior report without an
+  independent re-check this round.

@@ -2,118 +2,77 @@
 
 | | |
 |---|---|
-| Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `66f3ac3` |
+| Upstream | `main` @ `8c68f9b` (Add Maori translation) |
+| Port | `ruby` @ `ff9ec7c` (Retry a shot's render with a growing settle instead of a fixed one) |
 
-This audit builds on, and independently checks, `.reports/component-inventory.md`
-(a prior, file-by-file inventory already on this branch, 31 units, written
-against the `component-identification` skill). Rather than re-walk every
-widget row — that document already does it in detail and I spot-checked a
-representative sample of its rows against the actual Ruby and Vala/`.ui`
-source and found them accurate — this report records what that inventory's
-boundary leaves out, because a unit-by-unit inventory can be completely
-correct about the units it covers and still miss whole components that live
-outside `src/*.vala` + `data/ui/*.ui`.
+This re-runs the identification pass from scratch against the current `ruby`
+HEAD. The four prior reports under `.reports/` (`component-identification.md`,
+`component-parity.md`, `test-parity.md`, `translation-parity.md`) were all
+written against `ruby` @ `66f3ac3`, five commits and one "Parity reports"
+commit ago. Three of those five commits (`6788534`, `8662ed4`, `785d7e3`)
+exist specifically to close the gaps those stale reports found (`po/`,
+`data/`, `help/C/`, the two action icons), and the other two
+(`e657970`, `ff9ec7c`) fix the runtime defects the stale `test-parity.md`
+flagged (the GObject-CRITICAL on every scan, the silently-failing shots).
+Treating those stale documents as current would itself be the false-green
+failure `accountability-ensurance` exists to catch, so every claim below is
+re-derived against the files on disk now, not copied forward.
 
-## Confirmed accurate (spot-checked, not re-asserted on faith)
+`.reports/component-inventory.md` (the file-by-file survey, last rewritten at
+`8662ed4`) is largely still accurate and is confirmed below; it is kept as
+the inventory layer underneath this report.
 
-- CSS class sets: `grep -oE '\.[a-zA-Z0-9_-]+'` over `data/style.css` against
-  the heredoc in `lib/style.rb` (lines 28–165) shows no missing selector —
-  every upstream class name (`.pathbar`, `.progresscell`, `.ringschart`,
-  `.trough`, `.in-progress`, etc.) is present on the port side.
-- String fidelity: a dozen sampled `Translations.gettext(...)` call sites
-  (`"Disk Usage Analyzer"`, `"Home Folder"`, `"This Device"`,
-  `"%s Total"`/`"%s Available"`/`"%s Used"`, `"Unmounted"`, `"Today"`,
-  `"%d item"`/`"%d items"`) match upstream's `_()`/`ngettext()` sources
-  byte-for-byte. See `.reports/translation-parity.md` for the full account —
-  this is a component-identity fact (same label), not a translation-ledger
-  fact (whether it is actually translated, which it is not).
-- Action names: upstream's literal `"win."`/`"app."` accelerator strings
-  (`win.help`, `win.reload`, `win.scan-folder`, `win.show-preferences`,
-  `win.show-primary-menu`, `app.quit`) all appear, same spelling, in
-  `lib/application.rb`. The remaining upstream actions are installed from
-  the `ACTIONS`/`CHARTS` tables the inventory already documents as variables,
-  not literals — consistent with its own note that the scan's `action` stream
-  is the least reliable of the four.
-- Upstream has zero tests and the port's own drive/spec suites pass when run
-  under `xvfb-run` — re-executed for this audit, not taken on the prior
-  report's word (see `.reports/test-parity.md`).
+## File-level mapping — confirmed complete, re-checked by listing, not inference
 
-## Gaps the unit-by-unit inventory's boundary does not surface
+```
+$ find data help po -type f | wc -l   # port
+... (data: 8, help: 13, po: 110) matches upstream counts below
+```
 
-The prior inventory is scoped to `src/*.vala` + `data/ui/*.ui` → `lib/*.rb`,
-which is the right boundary for *widgets*, but three upstream component
-categories live entirely outside that boundary and have **no port-side file
-at all**, confirmed by direct listing rather than inference:
+- `data/`: desktop entry, metainfo, D-Bus service file, GSettings schema
+  (under `data/schemas/`), app icon (2 variants) + symbolic icon + the two
+  chart-mode action icons (`view-ringschart-symbolic.svg`,
+  `view-treemap-symbolic.svg`, previously missing — confirmed now present).
+  `diff` against `origin/main`'s `data/org.gnome.baobab.desktop.in`,
+  `.metainfo.xml.in`, and `data/org.gnome.baobab.gschema.xml` is **empty** —
+  byte-identical.
+- `po/`: 108 `.po` files, `LINGUAS` (110 lines, header + 108 codes),
+  `POTFILES.in`, `POTFILES.skip` — all four `diff`-identical to
+  `origin/main`'s `po/`.
+- `help/C/`: all 9 upstream Mallard pages + `legal.xml` + `media/` present.
+- Every upstream `src/*.vala` class and `data/ui/*.ui` template still has its
+  one `lib/*.rb` counterpart (31 units; re-confirmed against
+  `component-inventory.md`'s table, spot-checked a sample directly).
 
-1. **`data/` is entirely absent from the port.** No `.desktop.in`, no
-   `.metainfo.xml.in`, no `.gschema.xml`, no `.service.in`, no `baobab.1` man
-   page, no icons directory.
-   ```
-   $ ls data
-   ls: cannot access 'data': No such file or directory
-   ```
-   The prior inventory (line 426) calls this set "packaging, handled by the
-   gem/flake, not `lib/`." It is not handled: `flake.nix`'s schema-install
-   step is `if [ -d data/schemas ]; then … fi`, which is false today, so it
-   is a no-op, and the gemspec's `po/**/*` glob matches nothing because
-   `po/` also does not exist (see translation-parity report). Calling an
-   absent, never-exercised conditional "handled" is the kind of claim
-   `accountability-ensurance` exists to catch — see that report.
-2. **`help/` is entirely absent from the port.** Upstream ships 8 Mallard
-   help pages (`help/C/*.page`) translated into 33 languages
-   (`help/LINGUAS`). None exist anywhere in the port:
-   ```
-   $ find . -not -path './.git/*' -ipath '*help*'
-   ./spec/spec_helper.rb
-   ```
-   `Window#show_help` (`lib/window.rb:701-702`) does call
-   `Gtk.show_uri(uri: 'help:baobab', …)`, the same URI scheme upstream uses —
-   but with no Mallard pages installed anywhere the port ships or references,
-   that call has nothing to resolve to. This is a real content gap, not a
-   mechanism difference, and the prior inventory's note (line "Help is not
-   portable… this points at the upstream help URL rather than `help:baobab`")
-   is itself stale against the current code, which does use `help:baobab` —
-   worth flagging precisely because a stale claim in a parity document is the
-   failure mode `accountability-ensurance` is written to catch, even when (as
-   here) the underlying behavior described is still a real gap either way.
-3. **The GSettings schema is a correspondence, not a loss, but it is worth
-   stating as its own component rather than folding it into `lib/settings.rb`'s
-   row.** `lib/settings.rb` is a JSON file at a path of its own choosing, not
-   `Gio::Settings` bound to `org.gnome.baobab.gschema.xml`. The prior
-   inventory already names this (its item 4, "Deviation"), correctly, and I
-   confirm it: there is no `data/schemas` directory, `GSETTINGS_SCHEMA_DIR`
-   is set conditionally in the dev shell and resolves to nothing, and the
-   three upstream schema keys (`excluded-uris`, `active-chart`,
-   `window-size`/`is-maximized`) are reimplemented as JSON keys with the same
-   names. Behaviourally equivalent inside the app, not interoperable with a
-   real installed baobab's settings, and carrying no description strings for
-   a translator (see translation-parity).
+## Gaps found (re-derived, not inherited from the stale reports)
 
-## Runtime verification is narrower than "30 checks passed" reads
+1. **Translated help pages are not ported.** Upstream ships 28 translated
+   Mallard catalogues under `help/<lang>/<lang>.po` (`help/LINGUAS`, 28
+   entries: bg, ca, cs, da, de, el, es, eu, fi, fr, gl, hr, hu, id, it, kk,
+   ko, nl, pl, pt, pt_BR, ru, sl, sr, sv, tr, uk, zh_CN). The port has
+   `help/C/` only — `find help -mindepth 1 -maxdepth 1 -type d` returns just
+   `C` and `media`. This is a real, if narrow, gap: `win.help` opens correct
+   English content now, but a non-English user gets English help regardless
+   of locale, where upstream would show their language.
+2. **Nothing else found missing at the file-identification level.** The
+   action-icon gap and the `data/`/`po/`/`help/C/` absence that the prior
+   `component-identification.md` and `component-parity.md` reported are
+   **closed** — verified by `diff`, not by re-reading the old report's
+   claim. The GSettings schema is a real `.gschema.xml` file now shipped
+   under `data/schemas/`, wired into the dev shell
+   (`GSETTINGS_SCHEMA_DIR`) and `flake.nix`'s install step
+   (`if [ -d data/schemas ]` is now **true**, not the dead branch the prior
+   audit found) — though `lib/settings.rb` still stores state as JSON
+   rather than binding `Gio::Settings` to that schema at runtime (see
+   component-parity, item 3 — a documented correspondence, not a gap).
 
-`test/drive_main_window.rb` exercises 21 named components (window, both
-charts, the primary menu, the tree context menu, preferences, the excluded
-locations list, about, shortcuts) and all 30 of its `check(...)` calls pass.
-But the harness's own `shot` calls — which are what would catch "the widget
-is there but rendered wrong" — fail silently on 5 of 9 attempts this run
-(`RuntimeError: widget produced no render node`), and `GtkDriver` does not
-count a failed `shot` against the pass total. So the runtime gate's "30
-passed, 0 failed, 21 components" is correct about the 30 named assertions and
-does not mean 21 components were confirmed to *render* under Xvfb this run.
-See `.reports/test-parity.md` for the full detail, including a second,
-unrelated `GLib-GObject-CRITICAL` assertion that fires on every column-view
-build (`lib/tree_list_row_sorter.rb:50`) and is swallowed the same way.
+## What I did not re-derive from scratch
 
-## What I did not re-verify
-
-Given the existing inventory's depth, I did not re-derive its full
-31-row/per-widget tables from scratch (counts, CSS, signals per cell/menu/
-dialog file) — doing so and finding the same numbers would not be a
-meaningfully independent check. I instead re-ran its highest-leverage, most
-checkable claims (CSS diff, string bytes, action literals, the test/drive
-suites) and looked specifically for what its own chosen boundary (one upstream
-`.vala`/`.ui` pair → one `lib/*.rb`) structurally cannot show, which is where
-the three gaps above were found. A reviewer with more budget should still
-re-derive the per-widget signal/CSS tables independently rather than taking
-either document's word for the per-row detail.
+I did not re-walk all 31 `lib/*.rb` files' per-widget CSS/signal tables again
+— `component-inventory.md` already does this and nothing in the five
+intervening commits touches widget-internals in a way that would invalidate
+it (the commits are: inventory, icon port, po/data/help port, a GI-crash fix
+in `tree_list_row_sorter.rb`, and a screenshot-timing fix in
+`test/gtk_driver.rb`). I did re-check the two files those commits touch
+directly (`lib/tree_list_row_sorter.rb`, `test/gtk_driver.rb`) and the
+packaging/translation surface, which is where this round's changes landed.

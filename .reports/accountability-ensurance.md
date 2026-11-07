@@ -1,113 +1,92 @@
 # Accountability ensurance — baobab
 
-Scanned `lib/`, `exe/`, every `.reports/*.md` on this branch, and the repo
-root for `PORTING.md`/`FINDINGS.md` (neither exists). Also ran the skill's
-own scanner:
+| | |
+|---|---|
+| Upstream | `main` @ `8c68f9b` |
+| Port | `ruby` @ `ff9ec7c` |
+
+Supersedes the `accountability-ensurance.md` written against `66f3ac3`.
+That report's own headline finding — real, unexcused, but *unrecorded in the
+port's own prose* — described two gaps (0/108 languages, missing help/
+data/) that have both since been substantially closed by commits
+`6788534`/`8662ed4`/`785d7e3`/`e657970`/`ff9ec7c`. Re-checked from scratch,
+not re-read, for the reason this skill exists: a stale finding, repeated
+without re-verification, is itself the false-green failure to catch.
+
+## The biggest single risk this round: the four sibling reports' own prior content
+
+Before this round's rewrite, `.reports/component-identification.md`,
+`component-parity.md`, `test-parity.md`, and `translation-parity.md` all
+described the port as it stood at `66f3ac3` — missing `po/`/`data/`/`help/`,
+0 languages shipped, two unrebuilt runtime defects — while `HEAD` had moved
+five commits past that and fixed exactly those things. Had this audit
+treated those documents as current (e.g. "the prior report already says
+translation is 0/108, nothing to re-check"), it would have reported a real
+regression-of-the-audit: a true state (108/108 shipped, verified live) sitting
+behind a false, stale "0/108" claim, serving exactly the role this skill
+flags as most serious — "a false green claim that rests on something never
+executed," except inverted into a false *red* that was never re-executed
+either. Every claim in this round's four sibling reports was re-derived this
+session (worktree diff, live `LANG=de_DE.UTF-8` translation calls, a fresh
+drive run with full stderr inspection, a hand census against a freshly-run
+upstream-side scanner) rather than carried forward.
+
+## This round's own scanner run
 
 ```
 $ bash .claude/skills/accountability-ensurance/scripts/find-excuses.sh .
-.reports/component-inventory.md:225:skipped:honest but toothless - name the behaviour and owe it
+.reports/translation-parity.md:... "by design"   (prose about mnemonics, not an excuse)
+.reports/accountability-ensurance.md:... multiple hits (this file quoting its own trigger words to explain them)
 ```
 
-## That one hit is a false positive, read in context
-
-Line 225 of `.reports/component-inventory.md`:
-
-> `Gtk.Label` separator | repeater | `dim-label` | — | `/` between segments,
-> skipped for the first |
-
-"Skipped" there describes real UI behaviour (`pathbar.rb` does not draw a
-leading `/` before the first path segment) — it is not an admission of
-unported work. Confirmed by reading `lib/pathbar.rb`'s separator-building
-loop, which does skip the leading separator, matching upstream. Not rewritten.
-
-## No `PORTING.md`, no `FINDINGS.md` — and that absence is itself worth flagging
-
-Neither document exists on this branch. On one hand this means there is no
-"Dropped deliberately" section, no citation of a port-written note as
-authority for a gap, and no place for a gap to be laundered into settled
-architecture — the specific failure this skill exists to catch did not
-happen here in the form it took in `console-rb`.
-
-On the other hand, it means the two real gaps this audit found
-(`.reports/translation-parity.md`'s 0-of-108-languages finding and
-`.reports/component-parity.md`'s missing Help content / `data/` packaging)
-are recorded **nowhere** in the port's own prose before this audit — not
-excused, but also not owed anywhere a future agent would read before
-touching this code. An omission with no record is not an accountability
-violation under this skill's definition (nothing was written claiming it was
-handled), but it is the condition under which the next agent is most likely
-to *assume* parity and build on top of it. Recommend a `PORTING.md` /
-`FINDINGS.md` pair get written as part of closing these gaps, specifically so
-the next agent inherits a debt rather than a silent gap — but note that
-writing one now, in the admission format this skill requires, is future work
-for whoever closes the gap, not something to retrofit into this audit's
-reports.
-
-## Grep for the specific constructions, beyond the script's pattern set
+All hits are inside `.reports/*.md`'s own meta-discussion of the skill's
+vocabulary (quoting "dropped deliberately", "by design", etc. to explain why
+something is or is not one), not an excuse written about the port's own
+code. Read in context, confirmed false positives — same disposition as the
+prior round found for its one hit, re-verified rather than assumed.
 
 ```
 $ grep -rniE 'TODO|FIXME|not implemented|for now|in a future|out of scope|
   not applicable|n/a\b|does not carry over|by design|not needed|
-  dropped deliberately|intentionally omitted' lib/ exe/ README.md AGENTS.md IRP.md
-README.md:266:  (a Mastodon follow badge URL containing the literal string
-                "n/a"-shaped nothing — false match on a shield.io query param)
+  dropped deliberately|intentionally omitted' lib/ exe/
+(no output)
 ```
 
-No real hit. No `TODO`, no `FIXME`, no "not implemented", no "for now", no
-"out of scope", no "by design" anywhere in `lib/`, `exe/`, or the port's
-root-level prose.
+No hit anywhere in `lib/` or `exe/`. Still no `PORTING.md`, no `FINDINGS.md`
+on this branch — the gap in the port's own documentation practice the prior
+round flagged is unchanged: the two real findings this round *does* make
+(below) are recorded only in `.reports/`, nowhere in the port's own prose,
+which is the condition under which a future agent is most likely to assume
+parity and build on top of a gap. Recommend, again, that closing the chart-
+tab-mnemonic bug and the help-translation gap be accompanied by a
+`PORTING.md` note, not just a commit message.
 
-## `.reports/component-inventory.md` — read for soft language, not just the regex
+## What this round found that was not being laundered, but also was not being looked for
 
-This document is long, detailed, and largely holds up under the independent
-re-checks in this audit's other four reports. Two phrasings in it deserve a
-closer look against this skill's standard, even though neither matched the
-scanner:
-
-1. **"packaging, handled by the gem/flake, not `lib/`."** (line 426,
-   describing `data/org.gnome.baobab.desktop.in`, `.metainfo.xml.in`,
-   `.service.in`, `baobab.1`, icons.) Checked directly in
-   `.reports/component-identification.md`: it is not handled. The flake's
-   schema-copy step is `if [ -d data/schemas ]; then … fi`, which is false
-   today because `data/` does not exist, so the step is a silent no-op, and
-   the gemspec's `po/**/*` glob matches nothing for the same reason. "Handled
-   by the flake" is the exact shape of claim this skill exists to catch —
-   a plausible-sounding deferral that, read closely, defers to a mechanism
-   that never fires. This is now named directly, with the conditional and
-   the file:line, in `component-identification.md` and
-   `component-parity.md`, rather than left as a citation a future agent
-   could repeat.
-2. **"Deviation: … Behaviourally equivalent for the app; not interoperable
-   with an installed upstream baobab's settings."** (line 446, on the JSON
-   settings store.) This one is fine under the skill's own rule — it names
-   the substitution, states the real cost ("not interoperable"), and does
-   not claim the gap is closed. It is a documented correspondence, not an
-   excuse, and is recorded as such (not rewritten) in
-   `component-parity.md`.
-
-## What this report is not
-
-It is not a certificate that the port is finished — `.reports/
-component-parity.md` and `.reports/translation-parity.md` both record real,
-material, unexcused gaps (no help content, no desktop/metainfo/schema files,
-zero languages shipped). This report's finding is narrower and specific to
-its own skill: those gaps are not currently being *laundered* as decisions
-anywhere in this port's own prose. They are simply gaps, stated as gaps, in
-the other four reports — which is the outcome this skill is checking for,
-not a substitute for those reports existing and being read.
+The `_Rings Chart` / `_Treemap Chart` msgid-mismatch (full detail in
+`component-parity.md` and `translation-parity.md`) is not an excuse anywhere
+in the port's prose — there is no comment near `lib/window.rb:73` claiming
+these are intentionally untranslated or deliberately mnemonic-free. It is a
+plain bug, silently present, found only by hand-censusing every one of
+upstream's 79 msgids against the port rather than trusting the automated
+scanner's partial count or the prior report's sampled-dozen spot check
+(which happened not to include these two strings). This is the shape of
+gap `accountability-ensurance` is least equipped to catch by grepping for
+excuse-words, because no excuse was written — it is recorded here as a
+reminder that this skill's negative result ("no excuse found") is not the
+same claim as "no gap exists," and the other four skills' row-by-row
+re-derivation is what actually found it.
 
 ## Rules check
 
-- Rewrite in place, never delete: the one scanner hit was read in context and
-  left as-is (false positive), not deleted.
-- No new excuse introduced while writing this: the `data/`/flake finding is
-  named as "the flake's step is a no-op," not softened to "not yet wired up."
-- First person is not applicable here in the sense the skill's worked
-  examples use it (there is no existing excuse-sentence in this port to
-  rewrite into an admission) — the admission format is for rewriting an
-  existing excuse, and none exists to rewrite. Where this audit itself
-  found gaps, they are stated as gaps with file:line in the other four
-  reports, which is the standard this skill asks a *finding* to meet, not
-  the admission format, which is for a *port's own* prose about its own
-  skip.
+- Rewrite in place, never delete: no excuse-sentence existed in the port's
+  own code to rewrite; the scanner's hits are prose-about-vocabulary, read
+  in context, not deleted.
+- No new excuse introduced while writing this report: the remaining open
+  items (translated help, the chart-tab bug, no `PORTING.md`) are stated as
+  open, not softened.
+- This report does not certify the port clean — it certifies that no gap
+  found by the other four reports this round is currently being excused in
+  `lib/`, `exe/`, or the port's own prose. Two real, concrete gaps remain
+  open (see `component-parity.md`/`translation-parity.md`), and they are
+  gaps, stated as gaps, not decisions.

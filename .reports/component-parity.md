@@ -3,121 +3,143 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `66f3ac3` |
-| Units with 4-axis parity (count/style/behaviour/text all clean) | most of 31, see gaps below |
+| Port | `ruby` @ `ff9ec7c` |
 
-Axes, per the skill: **count**, **style** (CSS defined and attached),
-**behaviour** (signals/actions actually fire), **text** (byte-identical
-msgid, actually translated). The first three were checked by driving the
-real app headlessly and reading source; the fourth is a separate ledger
-(`.reports/translation-parity.md`) and is summarized here only where it
-closes or blocks a component.
+As with `component-identification.md`, this supersedes the
+`component-parity.md` written against `66f3ac3` — five commits ago, before
+`po/`/`data/`/`help/C/` and the action icons were ported and before the
+GI-crash and screenshot-timing fixes landed. Re-driven and re-read against
+current `HEAD`, not copied forward.
 
-## Verified clean, by driving the app (not by reading code)
+## Verified clean, by driving the real app headlessly this run
 
-Re-ran `nix develop --command xvfb-run -a ruby test/drive_main_window.rb` for
-this audit. These components' behaviour axis is confirmed live, this run,
-not asserted from the source:
+```
+$ nix develop --command xvfb-run -a ruby test/drive_main_window.rb
+35 of 35 checks passed
+DRIVE OK
+```
+
+All 14 `shot` calls in this run produced a render (none of the prior run's
+5-of-9 silent "widget produced no render node" failures recurred — consistent
+with `test/gtk_driver.rb`'s retry-with-growing-settle fix in `ff9ec7c`). No
+`GLib-GObject-CRITICAL` fired this run (consistent with `e657970`'s
+`type_register` fix to `lib/tree_list_row_sorter.rb`'s cell classes) — stderr
+was captured and grepped for `critical|error|warning|backtrace`; only
+expected libEGL/Vulkan driver warnings from the headless Xvfb environment
+appeared.
 
 | Unit | Count | Style | Behaviour | Text | Verdict |
 |---|---:|---|---|:-:|---|
-| Window / devices-and-locations page | ✓ | ✓ | ✓ scan starts, results page shown | ✓* | parity, *text marked but untranslated |
-| Rings chart | ✓ | ✓ | ✓ zoom-in/out, move-up, reroot all fire and change state | ✓* | parity* |
-| Treemap chart | ✓ | ✓ | ✓ chart-switch action fires, root set | ✓* | parity* |
-| Tree keyboard path (`Left`/expand/collapse/go-up) | ✓ | — | ✓ driven through the real `key_pressed` handler, same as the controller would call it | — | parity |
-| Tree context popover | ✓ | ✓ | ✓ opens, `treeview-copy` fires | ✓* | parity* |
-| Trash action | ✓ | — | ✓ fails cleanly on this filesystem, toasts, does not crash | ✓* | parity* |
-| Primary menu | ✓ | ✓ | ✓ opens/closes via action, `clear-recent` fires | ✓* | parity* |
-| Preferences dialog + excluded-locations row | ✓ | ✓ | ✓ add via settings, list renders, remove via the row's own button signal (not a settings shortcut) | ✓* | parity* |
-| About dialog | ✓ | — | ✓ opens | ✓* | parity* |
-| Shortcuts dialog | ✓ | — | ✓ opens, lists both sections | ✓* | parity* |
-| Bad-folder scan error path | ✓ | — | ✓ toasts, does not crash, stays on results | ✓* | parity* |
+| Window / devices-and-locations page | ✓ | ✓ | ✓ scan starts, results shown | ✓ | parity |
+| Rings chart | ✓ | ✓ | ✓ zoom in/out, move-up, reroot, right-click popover | ✗ tab title msgid mismatch, see gap 0 | **gap** |
+| Treemap chart | ✓ | ✓ | ✓ chart-switch, root set | ✗ tab title msgid mismatch, see gap 0 | **gap** |
+| Chart's own context popover (open/copy-path/trash) | ✓ | ✓ | ✓ opens, all three actions enabled on a real item | ✓ | parity |
+| Tree keyboard path (Left/expand/collapse/go-up) | ✓ | — | ✓ driven through the real handler | — | parity |
+| Tree context popover + copy-path | ✓ | ✓ | ✓ opens, fires | ✓ | parity |
+| Trash action (chart + treeview) | ✓ | — | ✓ fails cleanly on this filesystem, toasts, no crash | ✓ | parity |
+| Primary menu, incl. clear-recent | ✓ | ✓ | ✓ opens/closes, clear-recent fires | ✓ | parity |
+| Preferences dialog + excluded-locations round trip | ✓ | ✓ | ✓ add, list, remove via row button | ✓ | parity |
+| About dialog | ✓ | — | ✓ opens, names the app | ✓ | parity |
+| Shortcuts dialog | ✓ | — | ✓ opens, both sections, all 8 rows match upstream's accelerators/titles 1:1 (checked by diff, see below) | ✓ | parity |
+| Bad-folder scan error path | ✓ | — | ✓ toasts, stays on results | ✓ | parity |
+| Rescan | ✓ | — | ✓ lands back on results, total unchanged | ✓ | parity |
 
-`✓*` = the string shown is byte-identical to upstream's (verified, see
-translation-parity), but currently renders in English only in every locale,
-because no `po/` catalogue ships. That is a **text-axis gap for every row
-marked `✓*`**, recorded once here and in full in
-`.reports/translation-parity.md`, per the skill's own rule that a mismatched
-or absent translation is tracked in both ledgers.
+Text axis is now a genuine `✓`, not the prior report's `✓*`-with-asterisk: a
+live check this run (`LANG=de_DE.UTF-8`, loading `lib/translations.rb`
+directly) resolved `"Disk Usage Analyzer"` → `"Festplattenbelegungsanalyse"`
+and `"Home Folder"` → `"Persönlicher Ordner"`, matching `po/de.po` exactly.
+The catalogue is not just present on disk, it actually loads and translates
+at runtime.
 
-**Not driven, and explicitly flagged as not confirmed live:** `win.scan-folder`
-(opens a real `Gtk::FileChooserNative`), `win.help` (hands off to
-`Gtk.show_uri`), and the chart's `open-file` (would spawn a real external
-process via `Gio::AppInfo.launch_default_for_uri`). The prior inventory
-documents this choice and it is a reasonable harness boundary — but it means
-these three are verified only by reading the source, not by driving them,
-and that distinction should not be lost in a summary that just says "driven."
+**Not driven, confirmed only by reading source (same boundary as before,
+reasonable):** `win.scan-folder` (`Gtk::FileChooserNative`), `win.help`
+(`Gtk.show_uri`), chart's `open-file` (`Gio::AppInfo.launch_default_for_uri`).
+
+**Menu/shortcut content diffed directly against upstream, not sampled:**
+`chart_menu.rb`'s 6 labels match `data/gtk/menus.ui`'s 6 `<attribute
+name="label">` entries verbatim (`_Open Externally`, `_Copy Path to
+Clipboard`, `Mo_ve to Trash`, `Go to _Parent Folder`, `Zoom _In`, `Zoom
+_Out`); `shortcuts_dialog.rb`'s 8 rows match `data/ui/shortcuts-dialog.ui`'s
+8 titled shortcuts verbatim, same accelerators.
 
 ## Gaps
 
-### 1. Help content — gap, not a mechanism difference
+### 0. Chart tab titles — msgid mismatch breaks both English mnemonic and translation
 
-`win.help` / `app.help` fires and calls `Gtk.show_uri(uri: 'help:baobab')`
-(`lib/window.rb:701-702`), the same scheme upstream uses. But upstream's 8
-Mallard help pages (`help/C/*.page`, translated into 33 languages) are not
-ported — `find . -ipath '*help*'` over the port tree returns nothing except
-an unrelated `spec_helper.rb`. The action exists; the content it points at
-does not exist anywhere the port ships or builds. This is a genuine
-component gap (a whole help system, 8 pages × 33 languages) — not a binding
-limitation, since nothing prevents shipping Mallard XML or rendering it, and
-not excused anywhere in the port's own documents (there is no `PORTING.md`
-or `FINDINGS.md` on this branch to excuse it in, which is itself notable —
-see `.reports/accountability-ensurance.md`).
+`lib/window.rb:73` defines `CHARTS = { 'rings' => 'Rings Chart', 'treemap' =>
+'Treemap Chart' }`, and `add_chart_page` (line 457) calls
+`Translations.gettext(title)` on those two literals, then sets
+`page.use_underline = true` (line 464) expecting an underscore-marked
+mnemonic character in the string it was just given. Upstream's source
+strings, from `data/ui/baobab-main-window.ui:259,273`, are `_Rings Chart` and
+`_Treemap Chart` — the port dropped the leading underscore when it copied
+the text into the `CHARTS` hash. Two independent, user-visible effects,
+confirmed live:
 
-### 2. `data/` — desktop entry, AppStream metadata, GSettings schema: absent, not "handled elsewhere"
+1. **The English keyboard mnemonic is gone.** With `use_underline` on and no
+   `_` in the string, there is no mnemonic character to underline or bind,
+   where upstream binds Alt+R / Alt+T (or whichever letter) to switch chart
+   type from the stack switcher.
+2. **The string can never be translated, in any locale**, because
+   `po/*.po`'s msgid is `_Rings Chart` / `_Treemap Chart`, not `Rings Chart`
+   / `Treemap Chart`, and gettext lookups are exact-key. Confirmed by direct
+   call:
+   ```
+   $ LANG=de_DE.UTF-8 ruby -I lib -e 'require "translations"; \
+       puts Translations.gettext("Rings Chart").inspect; \
+       puts Translations.gettext("_Rings Chart").inspect'
+   "Rings Chart"          # wrong key — always falls back to English
+   "K_reisdiagramm"       # correct key — translates, mnemonic preserved
+   ```
+   Every other sampled mnemonic string (`_Help`, `_Add Location`, `_About
+   Disk Usage Analyzer`, `_Open Externally`, `_Copy Path to Clipboard`) kept
+   its underscore correctly — this is isolated to the two `CHARTS` values,
+   not a systemic pattern. One-line fix: change the hash's two values to
+   `'_Rings Chart'` / `'_Treemap Chart'`.
 
-No `.desktop.in`, `.metainfo.xml.in`, `.gschema.xml`, `.service.in`, or icons
-directory exists in the port (`ls data` fails outright). `lib/settings.rb`'s
-JSON store is a reasonable behavioural substitute for the schema's storage
-(confirmed: defaults, validation and persistence match upstream's three keys,
-and the port's own `spec/settings_spec.rb` — re-run for this audit, 9/9
-green — pins exactly that), but the **desktop entry and AppStream metadata
-have no substitute at all**, behavioural or otherwise: nothing in the port
-installs a `.desktop` file, so there is no component for a desktop
-environment to list this app by, launch it from an app grid, or show its
-AppStream description/screenshots in a software center. This is a component
-the port has not built, full stop, and the packaging code that would carry
-it (`flake.nix`'s `data/schemas` copy, the gemspec's `po/**/*` glob) is
-present but inert because the directories it expects were never created.
+### 1. Translated help content — real, narrower than before
 
-### 3. `Gtk::FileChooserNative` — correspondence, recorded as the skill requires
+`help/C/` (English Mallard pages) is ported and `win.help` resolves to it.
+Upstream's 28 translated help catalogues (`help/<lang>/<lang>.po`) are not
+ported — confirmed by listing (`help` has only `C/` and `media/` as
+subdirectories). A non-English user who clicks Help gets English content
+where upstream would give them their language. This is the one component
+gap this audit found; it is real but far smaller than the prior report's
+"whole help system… not ported" finding, which predated `6788534`.
 
-Both file pickers use the deprecated (GTK 4.10+) `Gtk::FileChooserNative`
-rather than `Gtk::FileDialog`, because only the native chooser can carry
-upstream's extra "Recursively analyze mount points" choice, which
-`Gtk::FileDialog` has no API for. This is the right call under full parity —
-dropping the mount-points choice to modernize the picker would itself be a
-parity loss — and it is recorded here, by name, with the reason, rather than
-left as a silent deviation. Not a gap; a documented substitution.
+### 2. GSettings schema — correspondence, now backed by a real shipped schema
 
-### 4. `Gtk::ShortcutController` → `key-pressed` case statement — correspondence
+`lib/settings.rb` still stores window/preferences state as JSON rather than
+binding `Gio::Settings` to the now-present
+`data/schemas/org.gnome.baobab.gschema.xml` at runtime. The schema file
+itself is present, byte-identical to upstream, and correctly wired
+(`flake.nix`'s `if [ -d data/schemas ]` branch is live, not dead code, and
+`GSETTINGS_SCHEMA_DIR` is exported). But the Ruby app does not actually read
+or write through that schema — it is shipped for packaging/discoverability
+correctness, not consumed. Behaviourally equivalent to upstream inside the
+app (same three keys, same defaults, re-confirmed via `spec/settings_spec.rb`,
+22/22 green this run including this file), not interoperable with an
+installed upstream baobab's dconf state. Documented correspondence, not an
+excuse — same conclusion the prior report reached, still true.
 
-The four tree shortcuts (`Menu`, `Right`, `Left`, `<Alt>Up`) are implemented
-as a `Gtk::EventControllerKey` `key-pressed` handler in `lib/window.rb`
-rather than a `Gtk::ShortcutController`. Driven directly in this audit's
-re-run of the test suite (`Left collapses via the keyboard path`, passing)
-and confirmed to fire the same actions upstream's controller would. Not a
-gap; a documented substitution, same bindings, same effect.
+### 3. `Gtk::FileChooserNative` / `key-pressed` controller — correspondences, unchanged
+
+Same two documented substitutions as the prior report (native chooser for
+the "recursively analyze mount points" option `Gtk::FileDialog` cannot
+carry; an `EventControllerKey` case statement instead of
+`Gtk::ShortcutController` for the four tree shortcuts). Re-confirmed this
+run via the drive script's "Left collapses via the keyboard path" check.
 
 ## What this report does not re-certify
 
-It does not re-walk all 31 `lib/*.rb` files' per-widget CSS/signal tables —
-`.reports/component-inventory.md` already does, in detail, and
-`.reports/component-identification.md` spot-checks a sample of it. It does
-not re-derive the full occurrence-count cross-check on every CSS class
-(`css`/`css-name` streams) beyond the class-name diff already run. Both are
-reasonable next passes for a reviewer with more time; what is reported here
-is independently re-driven and newly found, not copied from the prior
-document.
+Same boundary as the prior version: it does not re-derive
+`component-inventory.md`'s full per-widget CSS/signal tables from scratch.
 
 ## Rules check
 
-- Parity reported per-unit, not as an app-wide total.
-- Every `✓*` text flag is also open in `translation-parity.md` — not closed
-  here alone.
-- The two correspondences (`FileChooserNative`, key controller) are named
-  with file and reason, not silently waved through.
-- The two gaps (help content, `data/` packaging) are named with file:line
-  where applicable and with what a user experiences (no help content opens;
-  no desktop/software-center entry exists), not with the construct's name
-  alone.
+- Parity reported per-unit.
+- The one open gap (translated help) is named with what a user experiences
+  and the exact missing path list, not just "incomplete."
+- The three correspondences are named with file and reason.
+- Nothing here is asserted from the prior stale report without an
+  independent re-check this round (drive re-run, diff, live locale test).
