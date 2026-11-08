@@ -3,13 +3,39 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `ff9ec7c` |
+| Port | `ruby` @ `4e581e4` |
 
 As with `component-identification.md`, this supersedes the
-`component-parity.md` written against `66f3ac3` — five commits ago, before
-`po/`/`data/`/`help/C/` and the action icons were ported and before the
-GI-crash and screenshot-timing fixes landed. Re-driven and re-read against
-current `HEAD`, not copied forward.
+`component-parity.md` written against `66f3ac3` and then `ff9ec7c`.
+Re-driven and re-read against current `HEAD`, not copied forward.
+
+## Re-check: both gaps this report named at `ff9ec7c` are now closed
+
+The prior pass (below, kept rather than deleted, per this skill's rewrite-
+in-place rule) found two open gaps: the `_Rings Chart`/`_Treemap Chart`
+msgid mismatch (gap 0) and missing translated help catalogues (gap 1). Two
+commits since (`95c8bdc`, `4e581e4`) claim to close them. Re-verified this
+round, not taken on the commit messages' word:
+
+- **Gap 0, closed.** `lib/window.rb:73` now reads `CHARTS = { 'rings' =>
+  '_Rings Chart', 'treemap' => '_Treemap Chart' }`. Live check this run:
+  `LANG=de_DE.UTF-8 ruby -I lib -e 'require "translations"; puts
+  Translations.gettext("_Rings Chart")'` → `"K_reisdiagramm"`, the correct
+  msgid, mnemonic preserved. `git diff ff9ec7c HEAD -- lib/ exe/` shows
+  exactly this one line changed outside `help/` — no other code moved.
+- **Gap 1, closed.** `help/<lang>/<lang>.po` now exists for all 28 codes in
+  upstream's `help/LINGUAS`, and every one is byte-identical to
+  `origin/main`'s copy — checked this run with a `diff` loop over all 28,
+  not sampled, zero differences. `help/LINGUAS` itself also matches.
+  Upstream has no build-time itstool-render step reproduced in this port for
+  either `help/C/` or `help/<lang>/`, so "ships the catalogue, not a
+  compiled-page renderer" is the correct scope match to upstream's own
+  source tree (upstream's repo also ships only the `.po` files; the
+  rendered `.page`s are a Meson/itstool build product, not source).
+
+Both fixes re-verified against a fresh `DRIVE OK` run (35/35, see below) and
+a fresh `rspec` run (22/22) at this `HEAD`, confirming neither fix
+regressed anything already green.
 
 ## Verified clean, by driving the real app headlessly this run
 
@@ -31,8 +57,8 @@ appeared.
 | Unit | Count | Style | Behaviour | Text | Verdict |
 |---|---:|---|---|:-:|---|
 | Window / devices-and-locations page | ✓ | ✓ | ✓ scan starts, results shown | ✓ | parity |
-| Rings chart | ✓ | ✓ | ✓ zoom in/out, move-up, reroot, right-click popover | ✗ tab title msgid mismatch, see gap 0 | **gap** |
-| Treemap chart | ✓ | ✓ | ✓ chart-switch, root set | ✗ tab title msgid mismatch, see gap 0 | **gap** |
+| Rings chart | ✓ | ✓ | ✓ zoom in/out, move-up, reroot, right-click popover | ✓ (gap 0 closed, see re-check) | parity |
+| Treemap chart | ✓ | ✓ | ✓ chart-switch, root set | ✓ (gap 0 closed, see re-check) | parity |
 | Chart's own context popover (open/copy-path/trash) | ✓ | ✓ | ✓ opens, all three actions enabled on a real item | ✓ | parity |
 | Tree keyboard path (Left/expand/collapse/go-up) | ✓ | — | ✓ driven through the real handler | — | parity |
 | Tree context popover + copy-path | ✓ | ✓ | ✓ opens, fires | ✓ | parity |
@@ -62,9 +88,9 @@ Clipboard`, `Mo_ve to Trash`, `Go to _Parent Folder`, `Zoom _In`, `Zoom
 _Out`); `shortcuts_dialog.rb`'s 8 rows match `data/ui/shortcuts-dialog.ui`'s
 8 titled shortcuts verbatim, same accelerators.
 
-## Gaps
+## Gaps (as found at `ff9ec7c`, both now closed — see re-check above)
 
-### 0. Chart tab titles — msgid mismatch breaks both English mnemonic and translation
+### 0. Chart tab titles — msgid mismatch breaks both English mnemonic and translation — CLOSED at `95c8bdc`
 
 `lib/window.rb:73` defines `CHARTS = { 'rings' => 'Rings Chart', 'treemap' =>
 'Treemap Chart' }`, and `add_chart_page` (line 457) calls
@@ -97,7 +123,7 @@ confirmed live:
    not a systemic pattern. One-line fix: change the hash's two values to
    `'_Rings Chart'` / `'_Treemap Chart'`.
 
-### 1. Translated help content — real, narrower than before
+### 1. Translated help content — real, narrower than before — CLOSED at `4e581e4`
 
 `help/C/` (English Mallard pages) is ported and `win.help` resolves to it.
 Upstream's 28 translated help catalogues (`help/<lang>/<lang>.po`) are not
@@ -138,8 +164,13 @@ Same boundary as the prior version: it does not re-derive
 ## Rules check
 
 - Parity reported per-unit.
-- The one open gap (translated help) is named with what a user experiences
-  and the exact missing path list, not just "incomplete."
-- The three correspondences are named with file and reason.
+- Both gaps named at `ff9ec7c` are now closed, each re-verified live this
+  round (not re-asserted from the fixing commits' own messages).
+- The remaining two correspondences (settings-as-JSON, native
+  chooser/EventControllerKey) are named with file and reason, same as
+  before.
+- No component gap remains open as of `4e581e4`. The `no PORTING.md` /
+  "no excuse to cover a gap" finding belongs to `accountability-ensurance.md`,
+  not repeated here.
 - Nothing here is asserted from the prior stale report without an
   independent re-check this round (drive re-run, diff, live locale test).

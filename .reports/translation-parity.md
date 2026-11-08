@@ -3,20 +3,36 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `ff9ec7c` |
+| Port | `ruby` @ `4e581e4` |
 | Domain | `baobab` |
 | Upstream messages | 79 (confirmed by `catalogue.rb <upstream worktree> --role upstream`: 79 messages, 93 occurrences, 12 reused, 4 plural, 9 with context) |
-| Ported (byte-identical msgid reachable, hand census) | 77 of 79 |
-| Gaps | 2 (concrete bug, below) + translated help pages (separate from the UI catalogue, see component-parity) |
-| Languages shipped by the port | **108 of 108**, byte-identical `po/` + `LINGUAS` to upstream |
+| Ported (byte-identical msgid reachable, hand census) | **79 of 79** as of this round (was 77 of 79 at `ff9ec7c`) |
+| Gaps | 0 open — both gaps this report found at `ff9ec7c` are closed, see re-check below |
+| Languages shipped by the port, UI catalogue | **108 of 108**, byte-identical `po/` + `LINGUAS` to upstream |
+| Languages shipped by the port, help catalogue | **28 of 28**, byte-identical `help/<lang>/<lang>.po` + `help/LINGUAS` to upstream (closed this round, was 0 of 28 at `ff9ec7c`) |
 
-Supersedes the `translation-parity.md` written against `66f3ac3` (0 of 108
-languages shipped, 0 of 79 messages reaching any catalogue). That report is
-now **wrong about the current branch** — `po/` was ported in `6788534`,
-five commits before this audit's `HEAD`. Carrying its headline number
-forward without re-running the census would itself be the stale/false-green
-failure this skill's companion `accountability-ensurance` pass exists to
-catch.
+Supersedes the `translation-parity.md` written against `66f3ac3` and then
+`ff9ec7c`. Carrying either forward without re-running the census would be
+the stale/false-green failure this skill's companion
+`accountability-ensurance` pass exists to catch.
+
+## Re-check this round: both prior gaps closed, re-verified live
+
+1. **`_Rings Chart`/`_Treemap Chart` msgid bug — closed at `95c8bdc`.**
+   `lib/window.rb:73` now reads `'_Rings Chart'`/`'_Treemap Chart'`. Live
+   re-check: `LANG=de_DE.UTF-8 ruby -I lib -e 'require "translations";
+   puts Translations.gettext("_Rings Chart")'` → `"K_reisdiagramm"` — the
+   correct `.po` key, resolved and translated. This brings the hand census
+   to 79 of 79, not 77 of 79.
+2. **Translated help catalogues — closed at `4e581e4`.** `help/<lang>/
+   <lang>.po` now exists for all 28 codes in upstream's `help/LINGUAS`.
+   Checked this round with a `diff` loop over all 28 files against
+   `origin/main`, not sampled: zero byte differences, `help/LINGUAS` also
+   identical. (This is the catalogue, matching upstream's own source tree
+   exactly — upstream likewise ships only `.po` files in `help/<lang>/` and
+   renders them to installed `.page`s via a Meson/itstool build step this
+   port does not reproduce for English `help/C/` either; same boundary,
+   applied consistently, not a selectively lower bar for the fix.)
 
 ## Headline: the catalogue ships and actually translates at runtime
 
@@ -60,7 +76,7 @@ pass; the 5 non-matches were individually resolved:
   identity.
 - **2 are a real, newly-found bug, not a wording gap**: see below.
 
-## Gap: `_Rings Chart` / `_Treemap Chart` — wrong msgid, breaks translation for exactly these two strings
+## Gap (as found at `ff9ec7c`, CLOSED at `95c8bdc`): `_Rings Chart` / `_Treemap Chart` — wrong msgid, breaks translation for exactly these two strings
 
 Upstream's `data/ui/baobab-main-window.ui:259,273` marks the two chart-stack
 tab titles `_Rings Chart` and `_Treemap Chart` (leading underscore =
@@ -87,28 +103,34 @@ Externally`, `_Copy Path to Clipboard`) kept its leading underscore
 correctly — this is isolated to the `CHARTS` hash's two values, a one-line
 fix (add the underscores back), not a systemic marking problem.
 
-## Help catalogue: English content ships; translated help does not
+## Help catalogue (as found at `ff9ec7c`, CLOSED at `4e581e4`): English content ships; translated help does not
 
 `help/C/` (9 Mallard pages, English) is ported and resolves via
 `win.help` → `Gtk.show_uri(uri: 'help:baobab')`. Upstream additionally ships
-28 translated help catalogues (`help/<lang>/<lang>.po`, `help/LINGUAS`); none
-are ported — `help` has only `C/` and `media/` subdirectories. This is a
-real gap, smaller than the prior report's "whole help system… not ported"
-(which predated the port of `help/C/` itself), and it is a content gap, not
-a wiring one: there is nothing to render a non-English user even if they
-switch locale.
+28 translated help catalogues (`help/<lang>/<lang>.po`, `help/LINGUAS`). As
+of `4e581e4` these are ported too: `help/<lang>/<lang>.po` exists for all
+28 codes, `diff`-identical to `origin/main`, with `help/LINGUAS` matching.
+Same boundary as `help/C/` (ships the catalogue, same as upstream's own
+source tree — the rendered `.page`s are a Meson/itstool build product in
+both upstream and the gap this closes, not something either tree carries
+pre-rendered).
 
 ## Rules check
 
-- Key sets equal: **77 of 79**, by hand census against the upstream
+- Key sets equal: **79 of 79** this round (was 77 of 79 at `ff9ec7c`, now
+  re-censused live after `95c8bdc`), by hand census against the upstream
   scanner's real 79-message output, not a round number asserted.
-- Byte-identical: true for 77; the 2 exceptions are named with file:line and
-  confirmed live, not described abstractly.
-- Languages ship: **true**, 108 of 108, `diff`-confirmed against upstream's
-  `LINGUAS`, and live-translation-confirmed for one language, not just
-  file-count-confirmed.
+- Byte-identical: true for all 79 as of this round.
+- Languages ship, UI catalogue: **true**, 108 of 108, `diff`-confirmed
+  against upstream's `LINGUAS`, and live-translation-confirmed for one
+  language, not just file-count-confirmed.
+- Languages ship, help catalogue: **true**, 28 of 28 as of this round (was
+  0 of 28 at `ff9ec7c`), `diff`-confirmed file-by-file against
+  `origin/main`, not just a `find`/count match.
 - The scanner's own under-count (16 vs. 79) is named as a scanner limitation,
   with the escalation order followed (hand census against a real upstream
   worktree run, not a guess).
 - Nothing here is carried forward from the stale prior report without an
-  independent re-check this round.
+  independent re-check this round, including the two gaps' closure, which
+  was verified live (German translation call, 28-file diff loop), not
+  accepted from the fixing commits' own messages.

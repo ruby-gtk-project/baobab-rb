@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `ff9ec7c` |
+| Port | `ruby` @ `4e581e4` |
 | Upstream tests | 0 |
 | Ported | 0 |
 | Gaps | 0 |
@@ -21,6 +21,16 @@ Upstream `main` has no test suite: no `test/`/`tests/` directory, no
 `*_test.vala`, no `test()` target in `meson.build`/`src/meson.build`.
 Parity is **0/0, met trivially**; every check below is the port's own safety
 net, inheriting nothing from upstream.
+
+Re-confirmed again at `4e581e4` (two commits past `ff9ec7c`, both
+translation-only: the chart-tab msgid fix and the translated-help-catalogue
+port — neither touches `lib/*.rb` test-relevant logic beyond the one
+`window.rb` line, nor `spec/`/`test/`): same `35 of 35` / `22 examples, 0
+failures`, re-run fresh rather than carried forward. The two warnings on
+`spec/settings_spec.rb` (`method redefined`/`discarding old active_chart`
+etc.) are pre-existing memoized-accessor shadowing noise in
+`lib/settings.rb`, not from either of the two new commits, and do not fail
+the suite.
 
 ## Both suites re-run this audit, headless, under the dev shell's own printed commands
 

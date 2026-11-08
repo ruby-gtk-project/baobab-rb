@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Upstream | `main` @ `8c68f9b` |
-| Port | `ruby` @ `ff9ec7c` |
+| Port | `ruby` @ `4e581e4` |
 
 Supersedes the `accountability-ensurance.md` written against `66f3ac3`.
 That report's own headline finding — real, unexcused, but *unrecorded in the
@@ -61,32 +61,68 @@ parity and build on top of a gap. Recommend, again, that closing the chart-
 tab-mnemonic bug and the help-translation gap be accompanied by a
 `PORTING.md` note, not just a commit message.
 
-## What this round found that was not being laundered, but also was not being looked for
+## What the prior round found that was not being laundered, but also was not being looked for
 
 The `_Rings Chart` / `_Treemap Chart` msgid-mismatch (full detail in
-`component-parity.md` and `translation-parity.md`) is not an excuse anywhere
-in the port's prose — there is no comment near `lib/window.rb:73` claiming
-these are intentionally untranslated or deliberately mnemonic-free. It is a
-plain bug, silently present, found only by hand-censusing every one of
-upstream's 79 msgids against the port rather than trusting the automated
-scanner's partial count or the prior report's sampled-dozen spot check
-(which happened not to include these two strings). This is the shape of
-gap `accountability-ensurance` is least equipped to catch by grepping for
-excuse-words, because no excuse was written — it is recorded here as a
-reminder that this skill's negative result ("no excuse found") is not the
-same claim as "no gap exists," and the other four skills' row-by-row
-re-derivation is what actually found it.
+`component-parity.md` and `translation-parity.md`) was not an excuse
+anywhere in the port's prose — there was no comment near `lib/window.rb:73`
+claiming these were intentionally untranslated or deliberately
+mnemonic-free. It was a plain bug, silently present, found only by
+hand-censusing every one of upstream's 79 msgids against the port rather
+than trusting the automated scanner's partial count or an earlier sampled
+spot check. This is the shape of gap `accountability-ensurance` is least
+equipped to catch by grepping for excuse-words, because no excuse was
+written — recorded here as a reminder that this skill's negative result
+("no excuse found") is not the same claim as "no gap exists."
+
+## This round: re-check of the two gaps the prior round found, both now closed and re-verified, not re-excused
+
+`95c8bdc` fixed the `CHARTS` msgid bug and `4e581e4` ported the 28
+translated help catalogues. Neither commit's message, nor either sibling
+report, is taken on its word here: this round independently re-ran the
+live German-translation call (`Translations.gettext("_Rings Chart")` →
+`"K_reisdiagramm"`) and a 28-file `diff` loop against `origin/main`'s
+`help/<lang>/<lang>.po`, both clean. A commit message that *says* a gap is
+fixed, accepted without re-execution, would itself be exactly the
+false-green pattern this skill exists to catch — inverted from last
+round's finding (a true fix mistaken for still-open), but the same failure
+mode in reverse, so it gets the same re-derivation this round rather than
+either optimistic or stale treatment.
+
+Scanner and grep re-run fresh against current `HEAD` (not re-read from the
+prior round's output):
+
+```
+$ bash .claude/skills/accountability-ensurance/scripts/find-excuses.sh .
+.reports/translation-parity.md:... "by design"   (prose about mnemonics, not an excuse)
+.reports/accountability-ensurance.md:... multiple hits (this file quoting its own trigger words)
+```
+
+```
+$ grep -rniE 'TODO|FIXME|not implemented|for now|in a future|out of scope|
+  not applicable|n/a\b|does not carry over|by design|not needed|
+  dropped deliberately|intentionally omitted' lib/ exe/
+(no output)
+```
+
+Same result as last round: both hits are inside `.reports/*.md`'s own
+meta-discussion, not an excuse about the port's code; `lib/` and `exe/` are
+clean. `PORTING.md` is still absent — the recommendation from the prior
+round (record the two fixes there, not only in commit messages and
+`.reports/`) was not acted on. That is not itself a new gap (nothing in the
+task requires `PORTING.md` to exist), but it is worth repeating: the only
+place either fix is explained in prose, for a future agent who has not read
+this `.reports/` directory, is the two commit messages.
 
 ## Rules check
 
 - Rewrite in place, never delete: no excuse-sentence existed in the port's
   own code to rewrite; the scanner's hits are prose-about-vocabulary, read
   in context, not deleted.
-- No new excuse introduced while writing this report: the remaining open
-  items (translated help, the chart-tab bug, no `PORTING.md`) are stated as
-  open, not softened.
-- This report does not certify the port clean — it certifies that no gap
-  found by the other four reports this round is currently being excused in
-  `lib/`, `exe/`, or the port's own prose. Two real, concrete gaps remain
-  open (see `component-parity.md`/`translation-parity.md`), and they are
-  gaps, stated as gaps, not decisions.
+- No new excuse introduced while writing this report: both gaps are stated
+  as closed-and-reverified, not as assumed-fixed-because-a-commit-says-so.
+- This report certifies that no gap found by the other four reports this
+  round is currently being excused in `lib/`, `exe/`, or the port's own
+  prose, **and** that neither of the two gaps closed since the last audit
+  round was accepted on the strength of a commit message alone — both were
+  re-executed live this round. Zero gaps remain open as of `4e581e4`.
