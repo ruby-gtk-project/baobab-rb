@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'rb/version'
-
 # The gem's conventional entry point, matching the "baobab-rb" gem name.
 #
 # `require "baobab"` (lib/baobab.rb) loads the actual application; this file
@@ -14,6 +12,8 @@ require_relative 'rb/version'
 # requires 'adwaita', which needs a real or virtual display to initialise GTK.
 # A spec that genuinely needs the application asks for 'application' (or any
 # other lib/*.rb file) itself; this file only has to expose the gem's version.
+require_relative "rb/version"
+
 module Baobab
   module Rb
   end
